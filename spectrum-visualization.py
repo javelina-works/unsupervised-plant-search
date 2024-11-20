@@ -5,6 +5,9 @@ import rasterio
 import logging
 from logging_utils import setup_logger
 
+import plotly.graph_objects as go
+import numpy as np
+
 import matplotlib
 matplotlib.use("TkAgg")  # Or "Qt5Agg" depending on your system
 
@@ -181,6 +184,44 @@ def plot_rgb_histograms(image, alpha_channel):
 
 
 
+def plot_rgb_histograms_plotly(image, alpha_channel):
+    if image.shape[0] < 3:
+        print("Image does not have RGB channels.")
+        return
+
+    if alpha_channel is not None:
+        mask = alpha_channel != 0
+        red_channel = image[0, :, :][mask].flatten()
+        green_channel = image[1, :, :][mask].flatten()
+        blue_channel = image[2, :, :][mask].flatten()
+    else:
+        red_channel = image[0, :, :].flatten()
+        green_channel = image[1, :, :].flatten()
+        blue_channel = image[2, :, :].flatten()
+
+    # Create histograms for each RGB channel
+    hist_red, bins_red = np.histogram(red_channel, bins=256, range=(0, 255))
+    hist_green, bins_green = np.histogram(green_channel, bins=256, range=(0, 255))
+    hist_blue, bins_blue = np.histogram(blue_channel, bins=256, range=(0, 255))
+
+    # Create plotly figure
+    fig = go.Figure()
+
+    # Add histograms
+    fig.add_trace(go.Bar(x=bins_red[:-1], y=hist_red, marker_color='red', name='Red Channel', opacity=0.5))
+    fig.add_trace(go.Bar(x=bins_green[:-1], y=hist_green, marker_color='green', name='Green Channel', opacity=0.5))
+    fig.add_trace(go.Bar(x=bins_blue[:-1], y=hist_blue, marker_color='blue', name='Blue Channel', opacity=0.5))
+
+    fig.update_layout(
+        title="RGB Histograms with Interactive Axis",
+        xaxis_title="Pixel Intensity",
+        yaxis_title="Frequency",
+        barmode='stack',  # Stacked histograms
+        xaxis=dict(range=[0, 255])  # Initial range
+    )
+
+    fig.show()
+
 
 
 if __name__ == "__main__":
@@ -200,4 +241,7 @@ if __name__ == "__main__":
     # visualize_rgb_channels(image)
 
     # Plot the RGB histograms (ignoring alpha transparency)
-    plot_rgb_histograms(image, alpha_channel)
+    # plot_rgb_histograms(image, alpha_channel)
+
+    # Example of using plotly (no need for sliders)
+    plot_rgb_histograms_plotly(image, alpha_channel)
