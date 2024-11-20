@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Streamlit app layout
-st.title("Interactive RGBA Line Chart and Image Viewer")
+st.title("Interactive RGBA Histogram and Image Viewer")
 st.sidebar.header("Upload an Image")
 
 # Upload file
@@ -57,9 +57,28 @@ if uploaded_file:
         # Apply filters
         valid_alpha = (alpha >= alpha_range[0]) & (alpha <= alpha_range[1])
 
-        # Calculate the histogram for each channel
+        # Function to apply highlight range to the image and normalize properly
+        def apply_highlight_range(channel, min_val, max_val):
+            # Clip values to the highlight range
+            clipped_channel = np.clip(channel, min_val, max_val)
+            
+            # Normalize within the highlight range
+            normalized_channel = (clipped_channel - min_val) / (max_val - min_val)
+            
+            return normalized_channel
+
+        # Apply highlight range to each channel
+        red_clipped = apply_highlight_range(red, highlight_range[0], highlight_range[1])
+        green_clipped = apply_highlight_range(green, highlight_range[0], highlight_range[1])
+        blue_clipped = apply_highlight_range(blue, highlight_range[0], highlight_range[1])
+
+        if not hide_alpha:
+            alpha_clipped = apply_highlight_range(alpha, alpha_range[0], alpha_range[1])
+        else:
+            alpha_clipped = alpha / max_value  # Default normalization for alpha
+
+        # Calculate histogram data
         def calculate_histogram(channel):
-            # Flatten the channel and calculate the histogram
             counts, bin_edges = np.histogram(channel[valid_alpha], bins=np.arange(min_value, max_value + 2))
             bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2  # Get bin centers (pixel values)
             return bin_centers, counts
@@ -73,8 +92,8 @@ if uploaded_file:
         else:
             alpha_x, alpha_y = None, None
 
-        # Display the line chart
-        st.write("### RGBA Line Chart with Highlighted Range")
+        # Display the line chart (histogram)
+        st.write("### RGBA Histogram with Highlighted Range")
         fig, ax = plt.subplots(figsize=(10, 6))
 
         # Fill area under the lines for each channel
@@ -106,13 +125,11 @@ if uploaded_file:
         ax.legend()
         st.pyplot(fig)
 
-        # Display the RGBA image
-        st.write("### RGBA Image")
-        red_norm = red / red.max()
-        green_norm = green / green.max()
-        blue_norm = blue / blue.max()
-        alpha_norm = alpha / alpha.max()
-        rgba_image = np.stack([red_norm, green_norm, blue_norm, alpha_norm], axis=-1)
+        # Normalize and stack the RGBA image
+        rgba_image = np.stack([red_clipped, green_clipped, blue_clipped, alpha_clipped], axis=-1)
+
+        # Display the updated RGBA image
+        st.write("### Updated Image with Highlight Range Applied")
         fig, ax = plt.subplots(figsize=(6, 6))
         ax.imshow(rgba_image)
         ax.axis("off")
