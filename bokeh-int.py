@@ -1,5 +1,5 @@
 from bokeh.plotting import figure, curdoc
-from bokeh.models import ColumnDataSource, Select, Slider
+from bokeh.models import ColumnDataSource, Select, Slider, PointDrawTool
 from bokeh.layouts import column, row
 import rasterio
 import numpy as np
@@ -30,12 +30,12 @@ rgba_image = np.flipud((rgba_image * 255).astype(np.uint8).view(dtype=np.uint32)
 
 # Step 3: Create a Bokeh figure
 p = figure(
-    title="Interactive GeoTIFF Viewer with Markers",
+    title="Interactive GeoTIFF Viewer with Draggable Markers",
     x_range=(bounds.left, bounds.right),
     y_range=(bounds.bottom, bounds.top),
     match_aspect=True,
     active_scroll="wheel_zoom",
-    tools="pan,wheel_zoom,reset,tap",  # Enable tap tool for clicks
+    tools="pan,wheel_zoom,reset",  # Enable panning and zooming
     sizing_mode="scale_height",  # Adjust figure height to viewport height
 )
 
@@ -48,21 +48,16 @@ p.image_rgba(
     dh=bounds.top - bounds.bottom,
 )
 
-# Step 4: Create a data source for markers
+# Step 4: Create a data source for draggable markers
 marker_source = ColumnDataSource(data={"x": [], "y": []})
 
 # Add circle markers to the plot
 p.circle(x="x", y="y", size=10, color="red", source=marker_source)
 
-# Step 5: Add a callback to update markers on tap
-def add_marker_callback(event):
-    """Add a new marker where the user clicks."""
-    new_x = event.x
-    new_y = event.y
-    marker_source.stream({"x": [new_x], "y": [new_y]})
-
-# Link the tap event to the callback
-p.on_event("tap", add_marker_callback)
+# Step 5: Add PointDrawTool for draggable markers
+draw_tool = PointDrawTool(renderers=[p.renderers[-1]], empty_value="red")
+p.add_tools(draw_tool)
+p.toolbar.active_tap = draw_tool  # Set PointDrawTool as the active tool
 
 # Step 6: Add placeholder controls
 dropdown1 = Select(title="Select Option:", value="Original", options=["Original", "Option 1", "Option 2"])
