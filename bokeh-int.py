@@ -1,12 +1,10 @@
-from bokeh.plotting import figure, show, curdoc
+from bokeh.plotting import figure, curdoc
 from bokeh.models import ColumnDataSource, Select, Slider
 from bokeh.layouts import column, row
-
 import rasterio
 import numpy as np
-from matplotlib import cm
 
-# Step 1: Load GeoTIFF and extract bounds
+# Step 1: Load GeoTIFF and preprocess
 tiff_file = "input/ESPG-4326-orthophoto.tif"  # Replace with your file path
 
 with rasterio.open(tiff_file) as src:
@@ -27,42 +25,21 @@ with rasterio.open(tiff_file) as src:
     # Extract bounds for proper axis scaling
     bounds = src.bounds  # (left, bottom, right, top)
 
-
-def calculate_index(index_name):
-    """Calculate a vegetation index and return a colormap-applied RGBA image."""
-    if index_name == "NDVI":
-        index = (r_norm - g_norm) / (r_norm + g_norm + 1e-6)
-    elif index_name == "VARI":
-        index = (g_norm - r_norm) / (g_norm + r_norm - b_norm + 1e-6)
-    elif index_name == "GNDVI":
-        index = (g_norm - b_norm) / (g_norm + b_norm + 1e-6)
-    else:  # Original image
-        return rgb_image
-
-    # Normalize the index for display
-    index_norm = (index - np.min(index)) / (np.max(index) - np.min(index))
-
-    # Apply a colormap (e.g., viridis)
-    colormap = cm.get_cmap("viridis")
-    colored_index = colormap(index_norm)[:, :, :3]  # Drop alpha channel
-
-    return colored_index
-
-# Step 2: Convert RGBA to uint8 for Bokeh and flip vertically
+# Step 2: Convert RGBA to uint32 for Bokeh and flip vertically
 rgba_image = np.flipud((rgba_image * 255).astype(np.uint8).view(dtype=np.uint32).reshape(rgba_image.shape[:2]))
 
-# Step 3: Create a Bokeh figure with proper axis bounds
+# Step 3: Create a Bokeh figure
 p = figure(
-    title="Interactive GeoTIFF Viewer",
+    title="Interactive GeoTIFF Viewer with Markers",
     x_range=(bounds.left, bounds.right),
     y_range=(bounds.bottom, bounds.top),
     match_aspect=True,
     active_scroll="wheel_zoom",
-    tools="pan,wheel_zoom,reset",  # Enable panning and zooming
-    sizing_mode="scale_height",  # Adjust figure dimensions to viewport
+    tools="pan,wheel_zoom,reset,tap",  # Enable tap tool for clicks
+    sizing_mode="scale_height",  # Adjust figure height to viewport height
 )
 
-# Step 4: Add the RGBA image to the plot
+# Add the RGBA image to the plot
 p.image_rgba(
     image=[rgba_image],
     x=bounds.left,
@@ -71,41 +48,27 @@ p.image_rgba(
     dh=bounds.top - bounds.bottom,
 )
 
-# Step 4: Create a dropdown for placeholder interaction
-dropdown = Select(
-    title="Select Option:",
-    value="Original",
-    options=["Original", "Option 1", "Option 2"],  # Placeholder options
-)
+# Step 4: Create a data source for markers
+marker_source = ColumnDataSource(data={"x": [], "y": []})
 
-# Step 4: Create a dropdown for placeholder interaction
-dropdown1 = Select(
-    title="Select Option:",
-    value="Original",
-    options=["Original", "Option 1", "Option 2"],  # Placeholder options
-)
+# Add circle markers to the plot
+p.circle(x="x", y="y", size=10, color="red", source=marker_source)
 
-# Step 5: Create two placeholder sliders
-slider1 = Slider(
-    title="Placeholder Slider 1",
-    start=0,
-    end=100,
-    value=50,
-)
+# Step 5: Add a callback to update markers on tap
+def add_marker_callback(event):
+    """Add a new marker where the user clicks."""
+    new_x = event.x
+    new_y = event.y
+    marker_source.stream({"x": [new_x], "y": [new_y]})
 
-slider2 = Slider(
-    title="Placeholder Slider 2",
-    start=0,
-    end=200,
-    value=100,
-)
+# Link the tap event to the callback
+p.on_event("tap", add_marker_callback)
 
-# Step 6: Create another dropdown
-dropdown2 = Select(
-    title="Additional Option:",
-    value="Default",
-    options=["Default", "Option A", "Option B"],  # Placeholder options
-)
+# Step 6: Add placeholder controls
+dropdown1 = Select(title="Select Option:", value="Original", options=["Original", "Option 1", "Option 2"])
+slider1 = Slider(title="Placeholder Slider 1", start=0, end=100, value=50)
+slider2 = Slider(title="Placeholder Slider 2", start=0, end=200, value=100)
+dropdown2 = Select(title="Additional Option:", value="Default", options=["Default", "Option A", "Option B"])
 
 # Step 7: Layout the widgets and figure
 controls = column(dropdown1, slider1, slider2, dropdown2)
