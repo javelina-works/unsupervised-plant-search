@@ -2,6 +2,8 @@
 # Ignore input datasets
 input/
 
+# Bokeh outputs
+*.html
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
