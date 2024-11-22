@@ -27,6 +27,34 @@ with rasterio.open(tiff_file) as src:
     rgba_image = np.dstack((r_norm, g_norm, b_norm, alpha))
     bounds = src.bounds  # Extract bounds for proper axis scaling
 
+# DEBUGGING
+def inspect_index(index):
+    print("Index count:", np.size(index))
+    print("Index min:", np.nanmin(index))
+    print("Index max:", np.nanmax(index))
+    print("Index mean:", np.nanmean(index))
+    print("Index median:", np.nanmedian(index))
+    print("Index std:", np.nanstd(index))
+
+# DEBUGGING
+def count_out_of_bounds_values(data, lower=-1, upper=1):
+    """Count the number of values outside the specified range."""
+    # Identify values outside the range
+    out_of_bounds_mask = (data < lower) | (data > upper)
+    out_of_bounds_count = np.sum(out_of_bounds_mask)
+    print(f"Number of values outside [-1, 1]: {out_of_bounds_count}")
+    
+    # Count the number of out-of-bounds values
+    total_valid = np.sum(~np.isnan(data))
+    print(f"Number of values inside [-1, 1]: {total_valid}")
+    
+    # Calculate percentage
+    if total_valid > 0:
+        percentage_out_of_bounds = (out_of_bounds_count / total_valid) * 100
+        print(f"Percentage of out-of-bounds values: {percentage_out_of_bounds:.2f}%")
+
+
+
 # Define vegetation index calculations
 def calculate_index(index_name, colormap_name="RdYlGn"):
     """Calculate vegetation index and return a normalized image."""
@@ -37,18 +65,10 @@ def calculate_index(index_name, colormap_name="RdYlGn"):
     else:  # Default to RGB for the regular view
         return rgba_image, None
 
-    index[~non_transparent_mask] = np.nan  # Set transparent regions to NaN
-
-    # After calculating index_clipped in calculate_index
-    print("Index min:", np.min(index))
-    print("Index max:", np.max(index))
-    print("Index mean:", np.mean(index))
-    print("Index std:", np.std(index))
-
-
     # Normalize the index to [-1, 1] for visualization
+    index[~non_transparent_mask] = np.nan  # Set transparent regions to NaN
     index_clipped = np.clip(index, -1, 1)  # Ensure values are in the range [-1, 1]
-    index_norm = (index_clipped + 1) / 2  # Normalize to [0, 1] for colormap
+    index_norm = (index_clipped + 1) / 2  # Normalize to [0, 1] for colormap    
 
     # Apply a colormap (e.g., viridis)
     colormap = cm.get_cmap(colormap_name)
@@ -72,7 +92,7 @@ def compute_histogram(index_values):
     """Compute a histogram of index values."""
     if index_values is None:
         return np.array([]), np.array([])
-    hist, edges = np.histogram(index_values, bins=50, range=(-1, 1))
+    hist, edges = np.histogram(index_values, bins=125, range=(-1, 1))
     return hist, edges
 
 hist, edges = compute_histogram(initial_index)
