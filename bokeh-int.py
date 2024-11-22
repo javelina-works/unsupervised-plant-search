@@ -22,13 +22,10 @@ with rasterio.open(tiff_file) as src:
     # Combine into an RGBA image
     alpha = np.where((r == 0) & (g == 0) & (b == 0), 0, 1).astype(float)
     rgba_image = np.dstack((r_norm, g_norm, b_norm, alpha))
-
-    # Extract bounds for proper axis scaling
-    bounds = src.bounds  # (left, bottom, right, top)
-
+    bounds = src.bounds  # Extract bounds for proper axis scaling
 
 # Define vegetation index calculations
-def calculate_index(index_name):
+def calculate_index(index_name, colormap_name="RdYlGn"):
     """Calculate vegetation index and return a normalized image."""
     if index_name == "VARI":
         index = (g_norm - r_norm) / (g_norm + r_norm - b_norm + 1e-6)
@@ -39,14 +36,10 @@ def calculate_index(index_name):
 
     # Normalize the index to [-1, 1] for visualization
     index_clipped = np.clip(index, -1, 1)  # Ensure values are in the range [-1, 1]
-
-    # Normalize the index to [0, 1] for visualization
-    # index_norm = (index - np.min(index)) / (np.max(index) - np.min(index))
     index_norm = (index_clipped + 1) / 2  # Normalize to [0, 1] for colormap
 
     # Apply a colormap (e.g., viridis)
-    colormap = cm.get_cmap("RdYlGn")
-    # colored_index = colormap(index_norm)[:, :, :3]  # Remove alpha channel
+    colormap = cm.get_cmap(colormap_name)
     colored_index = colormap(index_norm)  # Returns RGBA values (0-1)
     colored_index[..., -1] = alpha  # Apply original transparency mask
 
@@ -54,18 +47,11 @@ def calculate_index(index_name):
 
 def to_bokeh_rgba(image):
     """Convert an RGBA array (float) to a uint32 array for Bokeh."""
-    # flipped = np.flipud((image * 255).astype(np.uint8))  # Flip vertically for Bokeh
-    # r, g, b, a = flipped[..., 0], flipped[..., 1], flipped[..., 2], flipped[..., 3]
-    # return (a.astype(np.uint32) << 24) | (b.astype(np.uint32) << 16) | (g.astype(np.uint32) << 8) | r.astype(np.uint32)
     return np.flipud((image * 255).astype(np.uint8).view(dtype=np.uint32).reshape(image.shape[:2]))
 
 
-# Step 2: Convert RGBA to uint32 for Bokeh and flip vertically
-# rgba_image = np.flipud((rgba_image * 255).astype(np.uint8).view(dtype=np.uint32).reshape(rgba_image.shape[:2]))
-
 # Step 3: Prepare initial data and Bokeh components
-# initial_image  = to_bokeh_rgba(rgba_image)
-
+initial_colormap = "RdYlGn"
 initial_image, initial_index = calculate_index("Regular")
 image_source = ColumnDataSource(data={"image": [to_bokeh_rgba(initial_image)]})
 
@@ -170,8 +156,7 @@ view_select = Select(
 
 def update_image(attr, old, new):
     """Update the displayed image based on the selected view."""
-    index_name = view_select.value
-    new_image, new_index = calculate_index(index_name)
+    new_image, new_index = calculate_index(view_select.value)
     image_source.data = {"image": [to_bokeh_rgba(new_image)]}
 
     # Update histogram
@@ -180,12 +165,27 @@ def update_image(attr, old, new):
 
 view_select.on_change("value", update_image)
 
+
+# Step 6: Dropdown for colormap selection
+color_select = Select(
+    title="Select Colormap:",
+    value="RdYlGn",
+    options=["RdYlGn", "Spectral", "viridis", "plasma", "inferno", "magma", "cividis", "jet" ],
+)
+
+def update_colormap(attr, old, new):
+    """Update the colormap of the image."""
+    new_image, new_index = calculate_index(view_select.value, color_select.value)
+    image_source.data = {"image": [to_bokeh_rgba(new_image)]}
+
+color_select.on_change("value", update_colormap)
+
+
 # Placeholder controls
 slider1 = Slider(title="Placeholder Slider 1", start=0, end=100, value=50)
 slider2 = Slider(title="Placeholder Slider 2", start=0, end=200, value=100)
-dropdown2 = Select(title="Additional Option:", value="Default", options=["Default", "Option A", "Option B"])
 
 # Step 7: Layout the widgets and figure
-controls = column(view_select, slider1, slider2, dropdown2, hist_figure, select)
+controls = column(view_select, color_select, slider1, slider2, hist_figure, select)
 layout = row(p, controls, sizing_mode="stretch_both")
 curdoc().add_root(layout)
