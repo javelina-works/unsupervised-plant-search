@@ -1,11 +1,22 @@
 from bokeh.plotting import figure, curdoc
-from bokeh.models import ColumnDataSource, Select, Slider, PointDrawTool, RangeTool, Range1d, Div, DataTable, TableColumn, CustomJS
+from bokeh.models import (
+    ColumnDataSource, Select, Slider, PointDrawTool, 
+    RangeTool, Range1d, Div, DataTable, TableColumn, 
+    CustomJS, Button
+)
 from bokeh.layouts import column, row
 import rasterio
 import numpy as np
 from matplotlib import cm
 import sys
 from skimage.transform import resize
+
+import logging
+from logging_utils import setup_logger
+
+# Initialize the logger
+logger = setup_logger(name="my_project_logger", log_level=logging.DEBUG)
+
 
 # Step 1: Load GeoTIFF and preprocess
 tiff_file = "input/ESPG-4326-orthophoto.tif"  # Replace with your file path
@@ -257,6 +268,38 @@ js_callback = CustomJS(args=dict(source=marker_source), code="""
 # Attach the CustomJS to the data source
 marker_source.js_on_change('data', js_callback)
 
+# Button to save data to file
+save_button = Button(label="Save to File", button_type="success")
+
+# Callback to save data to file
+def save_to_file():
+    """Save the current DataTable values to a waypoints file."""
+    data = marker_source.data  # Get the data from the source
+
+    waypoints_filename = 'gen2.waypoints'
+    with open(waypoints_filename, 'w') as f:
+        # Write header for the MAVLink file (QGroundControl WPL version)
+        f.write("QGC WPL 110\n")  # Write header
+        
+        # Check if there's any data to write
+        num_points = len(data["x"])  # Number of rows
+        if num_points == 0:
+            print("No points to save!")
+            return
+
+        # Add home point (index 0)
+        # Home point command = 3, current WP = 1
+        f.write(f"0\t1\t0\t3\t0\t0\t0\t0\t{data['y'][0]}\t{data['x'][0]}\t100.000000\t1\n")
+
+        # Add waypoints starting from index 1 (regular waypoints)
+        for index in range(1, num_points):
+            # Waypoint command = 16
+            f.write(f"{index}\t0\t0\t16\t0\t0\t0\t0\t{data['y'][index]}\t{data['x'][index]}\t100.000000\t1\n")
+
+    print(f"Waypoints have been exported to {waypoints_filename}")
+
+save_button.on_click(save_to_file)
+
 
 # Create a dropdown for toggling views
 view_select = Select(
@@ -298,6 +341,6 @@ slider1 = Slider(title="Placeholder Slider 1", start=0, end=100, value=50)
 slider2 = Slider(title="Placeholder Slider 2", start=0, end=200, value=100)
 
 # Step 7: Layout the widgets and figure
-controls = column(view_select, color_select, hist_figure, range_figure, range_display, slider1, slider2, data_table)
+controls = column(view_select, color_select, hist_figure, range_figure, range_display, slider1, slider2, save_button, data_table)
 layout = row(p, controls, sizing_mode="stretch_both")
 curdoc().add_root(layout)
