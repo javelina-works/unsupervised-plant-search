@@ -42,6 +42,7 @@ with rasterio.open(tiff_file) as src:
     # Combine into an RGBA image
     alpha = np.where((r == 0) & (g == 0) & (b == 0), 0, 1).astype(float)
     non_transparent_mask = alpha > 0  # True for pixels that are not fully transparent
+
     rgba_image = np.dstack((r_norm, g_norm, b_norm, alpha))
 
     # Compute new bounds based on downscaling
@@ -49,34 +50,18 @@ with rasterio.open(tiff_file) as src:
     original_width = src.width
     original_height = src.height
 
-    # # Calculate the new bounds after downscaling
-    # new_width = int(original_width * scale_factor)
-    # new_height = int(original_height * scale_factor)
-    # pixel_width = (original_bounds.right - original_bounds.left) / original_width
-    # pixel_height = (original_bounds.top - original_bounds.bottom) / original_height
-
-    # bounds = rasterio.coords.BoundingBox(
-    #     left=original_bounds.left,
-    #     right=original_bounds.left + pixel_width * new_width,
-    #     bottom=original_bounds.bottom,
-    #     top=original_bounds.bottom + pixel_height * new_height,
-    # )
-
-    # Original bounds and pixel size
-    original_bounds = src.bounds
-    original_width = src.width
-    original_height = src.height
-
-    # Adjust pixel dimensions based on scale factor
+    # Calculate the new bounds after downscaling
+    new_width = int(original_width * scale_factor)
+    new_height = int(original_height * scale_factor)
     pixel_width = (original_bounds.right - original_bounds.left) / original_width
     pixel_height = (original_bounds.top - original_bounds.bottom) / original_height
 
-    # No change to bounds; they remain the same
-    bounds = original_bounds
-
-    # Adjust resolution in Bokeh display
-    bokeh_pixel_width = pixel_width / scale_factor
-    bokeh_pixel_height = pixel_height / scale_factor
+    bounds = rasterio.coords.BoundingBox(
+        left=original_bounds.left,
+        right=original_bounds.left + pixel_width * new_width,
+        bottom=original_bounds.bottom,
+        top=original_bounds.bottom + pixel_height * new_height,
+    )
 
 # DEBUGGING
 def inspect_index(index):
@@ -286,12 +271,6 @@ marker_source.js_on_change('data', js_callback)
 # Button to save data to file
 save_button = Button(label="Save to File", button_type="success")
 
-def pixel_to_geospatial(x_pixel, y_pixel):
-    """Convert pixel coordinates to geospatial coordinates."""
-    geo_x = bounds.left + x_pixel * pixel_width
-    geo_y = bounds.top - y_pixel * pixel_height  # Note: Y-axis is inverted in raster
-    return geo_x, geo_y
-
 # Callback to save data to file
 def save_to_file():
     """Save the current DataTable values to a waypoints file."""
@@ -310,15 +289,12 @@ def save_to_file():
 
         # Add home point (index 0)
         # Home point command = 3, current WP = 1
-        x_geo, y_geo = pixel_to_geospatial(data["x"][0], data["y"][0])
-        # Home point command = 3, current WP = 1
-        f.write(f"0\t1\t0\t3\t0\t0\t0\t0\t{y_geo:.6f}\t{x_geo:.6f}\t100.000000\t1\n")
+        f.write(f"0\t1\t0\t3\t0\t0\t0\t0\t{data['y'][0]}\t{data['x'][0]}\t100.000000\t1\n")
 
         # Add waypoints starting from index 1 (regular waypoints)
         for index in range(1, num_points):
-            x_geo, y_geo = pixel_to_geospatial(data["x"][index], data["y"][index])
             # Waypoint command = 16
-            f.write(f"{index}\t0\t0\t16\t0\t0\t0\t0\t{y_geo:.6f}\t{x_geo:.6f}\t100.000000\t1\n")
+            f.write(f"{index}\t0\t0\t16\t0\t0\t0\t0\t{data['y'][index]}\t{data['x'][index]}\t100.000000\t1\n")
 
     print(f"Waypoints have been exported to {waypoints_filename}")
 
