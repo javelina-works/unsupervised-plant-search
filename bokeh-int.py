@@ -5,6 +5,7 @@ import rasterio
 import numpy as np
 from matplotlib import cm
 import sys
+from skimage.transform import resize
 
 # Step 1: Load GeoTIFF and preprocess
 tiff_file = "input/ESPG-4326-orthophoto.tif"  # Replace with your file path
@@ -14,6 +15,13 @@ with rasterio.open(tiff_file) as src:
     r = src.read(1).astype(float)
     g = src.read(2).astype(float)
     b = src.read(3).astype(float)
+
+    # Downscale image during loading
+    scale_factor = 0.25  # Adjust to a suitable resolution
+    r = resize(r, (int(r.shape[0] * scale_factor), int(r.shape[1] * scale_factor)), anti_aliasing=True)
+    g = resize(g, (int(g.shape[0] * scale_factor), int(g.shape[1] * scale_factor)), anti_aliasing=True)
+    b = resize(b, (int(b.shape[0] * scale_factor), int(b.shape[1] * scale_factor)), anti_aliasing=True)
+
 
     # Normalize RGB bands for display
     r_norm = (r - np.min(r)) / (np.max(r) - np.min(r))
@@ -25,7 +33,24 @@ with rasterio.open(tiff_file) as src:
     non_transparent_mask = alpha > 0  # True for pixels that are not fully transparent
 
     rgba_image = np.dstack((r_norm, g_norm, b_norm, alpha))
-    bounds = src.bounds  # Extract bounds for proper axis scaling
+
+    # Compute new bounds based on downscaling
+    original_bounds = src.bounds  # Original bounds of the image
+    original_width = src.width
+    original_height = src.height
+
+    # Calculate the new bounds after downscaling
+    new_width = int(original_width * scale_factor)
+    new_height = int(original_height * scale_factor)
+    pixel_width = (original_bounds.right - original_bounds.left) / original_width
+    pixel_height = (original_bounds.top - original_bounds.bottom) / original_height
+
+    bounds = rasterio.coords.BoundingBox(
+        left=original_bounds.left,
+        right=original_bounds.left + pixel_width * new_width,
+        bottom=original_bounds.bottom,
+        top=original_bounds.bottom + pixel_height * new_height,
+    )
 
 # DEBUGGING
 def inspect_index(index):
@@ -124,7 +149,7 @@ p.image_rgba(
     dw=bounds.right - bounds.left,
     dh=bounds.top - bounds.bottom,
 )
-
+p.output_backend = "webgl"
 
 # Step 5: Single Histogram as a Line Graph
 midpoints = (edges[:-1] + edges[1:]) / 2  # Compute midpoints of bins
