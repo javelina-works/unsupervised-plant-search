@@ -94,11 +94,16 @@ def calculate_index(index_name, colormap_name="RdYlGn", lower_clip=None, upper_c
 
     # Apply a colormap (e.g., viridis)
     # =================================
-    lower_bound = lower_clip or -1 # Apply lower clipping if specified
-    upper_bound = upper_clip or 1
-    selected_range = np.clip(index, lower_bound, upper_bound)  
+    if lower_clip is not None:
+        index[index < lower_clip] = -1
+    if upper_clip is not None:
+        index[index > upper_clip] = 1
+    # lower_bound = -1 if lower_clip is None else lower_clip # Apply lower clipping if specified
+    # upper_bound = 1 if upper_clip is None else upper_clip
+    # selected_range = np.clip(index, lower_bound, upper_bound)  
+    # index_norm = (selected_range + 1) / 2  # Normalize to [0, 1] for colormap    
 
-    index_norm = (selected_range + 1) / 2  # Normalize to [0, 1] for colormap    
+    index_norm = (index + 1) / 2  # Normalize to [0, 1] for colormap    
 
     colormap = cm.get_cmap(colormap_name)
     colored_index = colormap(index_norm)  # Returns RGBA values (0-1)
@@ -155,10 +160,15 @@ p.output_backend = "webgl"
 midpoints = (edges[:-1] + edges[1:]) / 2  # Compute midpoints of bins
 line_hist_source = ColumnDataSource(data={"x": midpoints, "y": hist})  # Source for the line graph
 
+midpoints_center = ((max(midpoints) + min(midpoints))/2)
+low_midpoint = min(midpoints) + (midpoints_center - min(midpoints))/2 
+high_midpoint = max(midpoints) - (max(midpoints) - midpoints_center)/2
+
 hist_figure = figure(
     title="Index Value Frequency",
     height=150, width=800,
-    x_range=Range1d(-1, 1),
+    # x_range=Range1d(-1, 1),
+    x_range=Range1d(low_midpoint, high_midpoint),
     toolbar_location=None,
     tools="reset",
     background_fill_color="#efefef",
@@ -207,7 +217,8 @@ def update_range(attr, old, new):
         )
 
         new_image, new_index = calculate_index(
-            view_select.value, color_select.value, lower_clip=range_start
+            view_select.value, color_select.value,
+            lower_clip=range_start, upper_clip=range_end
         )
         image_source.data = {"image": [to_bokeh_rgba(new_image)]}
 

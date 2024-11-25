@@ -3,12 +3,13 @@ Unsupervised computer vision to find target plants from a geo-referenced orthoph
 
 
 ## Future Improvements
-- Optimize callbacks
+- [ ] Optimize callbacks
     - Precompute & cache computations
-- Debounce & delay callbacks
-- WebGL rendering
-- Lazy loading of image tiles
-
+- [ ] Debounce & delay callbacks
+    - Don't update image until range has been untouched ~300ms or so
+- [ ] WebGL rendering
+- [ ] Lazy loading of image tiles
+- [ ] Auto-select best range for index
 
 ## Misc. Testing Notes
 
