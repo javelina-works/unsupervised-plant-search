@@ -53,8 +53,10 @@ def count_out_of_bounds_values(data, lower=-1, upper=1):
         percentage_out_of_bounds = (out_of_bounds_count / total_valid) * 100
         print(f"Percentage of out-of-bounds values: {percentage_out_of_bounds:.2f}%")
 
+
+
 # Define vegetation index calculations
-def calculate_index(index_name, colormap_name="RdYlGn", lower_clip=None, upper_clip=None):
+def calculate_index(index_name, colormap_name="RdYlGn"):
     """Calculate vegetation index and return a normalized image."""
     if index_name == "VARI":
         index = (g_norm - r_norm) / (g_norm + r_norm - b_norm + 1e-6)
@@ -66,15 +68,9 @@ def calculate_index(index_name, colormap_name="RdYlGn", lower_clip=None, upper_c
     # Normalize the index to [-1, 1] for visualization
     index[~non_transparent_mask] = np.nan  # Set transparent regions to NaN
     index_clipped = np.clip(index, -1, 1)  # Ensure values are in the range [-1, 1]
+    index_norm = (index_clipped + 1) / 2  # Normalize to [0, 1] for colormap    
 
     # Apply a colormap (e.g., viridis)
-    # =================================
-    lower_bound = lower_clip or -1 # Apply lower clipping if specified
-    upper_bound = upper_clip or 1
-    selected_range = np.clip(index, lower_bound, upper_bound)  
-
-    index_norm = (selected_range + 1) / 2  # Normalize to [0, 1] for colormap    
-
     colormap = cm.get_cmap(colormap_name)
     colored_index = colormap(index_norm)  # Returns RGBA values (0-1)
     colored_index[..., -1] = alpha  # Apply original transparency mask
@@ -181,15 +177,10 @@ def update_range(attr, old, new):
             f"End = {range_end:.2f}"
         )
 
-        new_image, new_index = calculate_index(
-            view_select.value, color_select.value, lower_clip=range_start
-        )
-        image_source.data = {"image": [to_bokeh_rgba(new_image)]}
-
 # Attach the callback to the RangeTool's x_range
 spectrum_range.x_range.on_change("start", update_range)
 spectrum_range.x_range.on_change("end", update_range)
-# spectrum_range.on_change("x_range", update_range)
+spectrum_range.on_change("x_range", update_range)
 
 
 
@@ -209,11 +200,12 @@ view_select = Select(
 
 def update_image(attr, old, new):
     """Update the displayed image based on the selected view."""
-    new_image, new_index = calculate_index(view_select.value, color_select.value, spectrum_range.x_range.start)
+    new_image, new_index = calculate_index(view_select.value)
     image_source.data = {"image": [to_bokeh_rgba(new_image)]}
 
     # Update histogram
     hist, edges = compute_histogram(new_index)
+    # hist_source.data = {"top": hist, "left": edges[:-1], "right": edges[1:]}
     midpoints = (edges[:-1] + edges[1:]) / 2
     line_hist_source.data = {"x": midpoints, "y": hist}  # Update line graph source
 
@@ -229,7 +221,7 @@ color_select = Select(
 
 def update_colormap(attr, old, new):
     """Update the colormap of the image."""
-    new_image, new_index = calculate_index(view_select.value, color_select.value, spectrum_range.x_range.start)
+    new_image, new_index = calculate_index(view_select.value, color_select.value)
     image_source.data = {"image": [to_bokeh_rgba(new_image)]}
 
 color_select.on_change("value", update_colormap)
