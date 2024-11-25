@@ -1,5 +1,5 @@
 from bokeh.plotting import figure, curdoc
-from bokeh.models import ColumnDataSource, Select, Slider, PointDrawTool, RangeTool, Range1d, Div
+from bokeh.models import ColumnDataSource, Select, Slider, PointDrawTool, RangeTool, Range1d, Div, DataTable, TableColumn, CustomJS
 from bokeh.layouts import column, row
 import rasterio
 import numpy as np
@@ -97,11 +97,7 @@ def calculate_index(index_name, colormap_name="RdYlGn", lower_clip=None, upper_c
     if lower_clip is not None:
         index[index < lower_clip] = -1
     if upper_clip is not None:
-        index[index > upper_clip] = 1
-    # lower_bound = -1 if lower_clip is None else lower_clip # Apply lower clipping if specified
-    # upper_bound = 1 if upper_clip is None else upper_clip
-    # selected_range = np.clip(index, lower_bound, upper_bound)  
-    # index_norm = (selected_range + 1) / 2  # Normalize to [0, 1] for colormap    
+        index[index > upper_clip] = 1  
 
     index_norm = (index + 1) / 2  # Normalize to [0, 1] for colormap    
 
@@ -141,7 +137,7 @@ p = figure(
     y_range=(bounds.bottom, bounds.top),
     match_aspect=True,
     active_scroll="wheel_zoom",
-    tools="pan,wheel_zoom,reset,tap",  # Enable panning and zooming
+    tools="pan,wheel_zoom,reset",  # Enable panning and zooming
     sizing_mode="scale_height",  # Adjust figure height to viewport height
 )
 
@@ -230,11 +226,37 @@ spectrum_range.x_range.on_change("end", update_range)
 
 
 # Step 4: Create a data source for draggable markers
-# marker_source = ColumnDataSource(data={"x": [], "y": []})
-# p.circle(x="x", y="y", size=10, color="red", source=marker_source) # Add circle markers to the plot
-# draw_tool = PointDrawTool(renderers=[p.renderers[-1]], empty_value="red")
-# p.add_tools(draw_tool)
-# p.toolbar.active_tap = draw_tool  # Set PointDrawTool as the active tool
+marker_source = ColumnDataSource(data={"x": [], "y": [], "label": []})
+points = p.scatter(x="x", y="y", size=10, color="red", source=marker_source) # Add circle markers to the plot
+p.line(x="x", y="y", source=marker_source, line_width=2, color="green")  # Line connecting points
+p.text(x="x", y="y", text="label", source=marker_source, text_font_size="10pt", text_baseline="middle", color="yellow")
+
+draw_tool = PointDrawTool(renderers=[points], empty_value="1")
+p.add_tools(draw_tool)
+p.toolbar.active_tap = draw_tool  # Set PointDrawTool as the active tool
+
+# DataTable to display clicked points
+columns = [
+    TableColumn(field="label", title="Waypoint #"),
+    TableColumn(field="x", title="X Coordinate"),
+    TableColumn(field="y", title="Y Coordinate"),
+]
+data_table = DataTable(source=marker_source, columns=columns, width=400, height=280)
+
+# CustomJS to number points incrementally
+# Good: Faster to handle this in the browser
+js_callback = CustomJS(args=dict(source=marker_source), code="""
+    const data = source.data;
+    const labels = data['label'];
+    for (let i = 0; i < data['x'].length; i++) {
+        labels[i] = (i + 1).toString();  // Incremental numbering starts from 1
+    }
+    source.change.emit();  // Trigger update
+""")
+
+# Attach the CustomJS to the data source
+marker_source.js_on_change('data', js_callback)
+
 
 # Create a dropdown for toggling views
 view_select = Select(
@@ -276,6 +298,6 @@ slider1 = Slider(title="Placeholder Slider 1", start=0, end=100, value=50)
 slider2 = Slider(title="Placeholder Slider 2", start=0, end=200, value=100)
 
 # Step 7: Layout the widgets and figure
-controls = column(view_select, color_select, hist_figure, range_figure, range_display, slider1, slider2)
+controls = column(view_select, color_select, hist_figure, range_figure, range_display, slider1, slider2, data_table)
 layout = row(p, controls, sizing_mode="stretch_both")
 curdoc().add_root(layout)
