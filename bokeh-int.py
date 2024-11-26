@@ -2,7 +2,7 @@ from bokeh.plotting import figure, curdoc
 from bokeh.models import (
     ColumnDataSource, Select, Slider, PointDrawTool, 
     RangeTool, Range1d, Div, DataTable, TableColumn, 
-    CustomJS, Button
+    CustomJS, Button, CrosshairTool
 )
 from bokeh.layouts import column, row
 import rasterio
@@ -28,7 +28,7 @@ with rasterio.open(tiff_file) as src:
     b = src.read(3).astype(float)
 
     # Downscale image during loading
-    scale_factor = 0.25  # Adjust to a suitable resolution
+    scale_factor = 1  # Adjust to a suitable resolution
     r = resize(r, (int(r.shape[0] * scale_factor), int(r.shape[1] * scale_factor)), anti_aliasing=True)
     g = resize(g, (int(g.shape[0] * scale_factor), int(g.shape[1] * scale_factor)), anti_aliasing=True)
     b = resize(b, (int(b.shape[0] * scale_factor), int(b.shape[1] * scale_factor)), anti_aliasing=True)
@@ -162,6 +162,22 @@ p.image_rgba(
     dh=bounds.top - bounds.bottom,
 )
 p.output_backend = "webgl"
+crosshair = CrosshairTool()
+p.add_tools(crosshair)
+
+# Div to display the coordinates
+coords = Div(text="Mouse Coordinates: (x: --, y: --)", width=300, height=30)
+
+# CustomJS callback for updating coordinates
+callback = CustomJS(args=dict(coords=coords), code="""
+    const {x, y} = cb_obj; // Get the mouse event from cb_obj
+    // Update the Div text with the new coordinates
+    coords.text = `Mouse Coordinates: (x: ${x.toFixed(7)}, y: ${y.toFixed(7)})`;
+""")
+
+# Attach the CustomJS to the plot's mouse move event
+p.js_on_event("mousemove", callback)
+
 
 # Step 5: Single Histogram as a Line Graph
 midpoints = (edges[:-1] + edges[1:]) / 2  # Compute midpoints of bins
@@ -341,6 +357,6 @@ slider1 = Slider(title="Placeholder Slider 1", start=0, end=100, value=50)
 slider2 = Slider(title="Placeholder Slider 2", start=0, end=200, value=100)
 
 # Step 7: Layout the widgets and figure
-controls = column(view_select, color_select, hist_figure, range_figure, range_display, slider1, slider2, save_button, data_table)
+controls = column(coords, view_select, color_select, hist_figure, range_figure, range_display, slider1, slider2, save_button, data_table)
 layout = row(p, controls, sizing_mode="stretch_both")
 curdoc().add_root(layout)
