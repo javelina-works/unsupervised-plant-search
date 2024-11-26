@@ -13,6 +13,15 @@ Unsupervised computer vision to find target plants from a geo-referenced orthoph
 
 ## Misc. Testing Notes
 
+To upload huge GeoTiff files: 
+
+`bokeh serve --show bokeh-tif.py --websocket-max-message-size=500000000`
+
+Not entirely sure what the default set limit is, but it is much too small for the larger file uploads. We may need to adjust server configs on deploy.
+
+
+
+
 Actually usable files:
 - spectrum-visualization.py
     - Opens tab in browser, interactive RBG histogram

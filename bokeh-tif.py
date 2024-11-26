@@ -45,13 +45,11 @@ def process_tiff(file_contents):
         else:
             encoded = file_contents  # Assume the entire content is Base64-encoded
             print("No header yet found!")
+    
+        decoded = base64.b64decode(encoded) # Decode Base64 content
 
-        # Decode Base64 content
-        decoded = base64.b64decode(encoded)
-        # image = Image.open(io.BytesIO(decoded)).convert("RGBA")  # Convert to RGBA format
-
-        image_array = None
-
+        # Memory read files
+        # https://rasterio.readthedocs.io/en/latest/topics/memory-files.html#memoryfile-bytesio-meets-namedtemporaryfile
         with MemoryFile(decoded) as memfile:
             with memfile.open() as src:
                 r = src.read(1).astype(float)
