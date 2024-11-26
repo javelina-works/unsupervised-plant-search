@@ -61,18 +61,22 @@ def process_tiff(file_contents):
 
         # print(image_array)
 
-                r = dataset.read(1)
-                g = dataset.read(2)
-                b = dataset.read(3)
+                r = dataset.read(1).astype(float)
+                g = dataset.read(2).astype(float)
+                b = dataset.read(3).astype(float)
 
                 # Normalize bands to 0-255
                 def normalize(band):
                     return (255 * (band - band.min()) / (band.max() - band.min())).astype(np.uint8)
 
+                def float_normalize(band):
+                    return ((band - band.min()) / (band.max() - band.min()))
+
                 r_norm, g_norm, b_norm = map(normalize, [r, g, b])
+                r_norm, g_norm, b_norm = map(float_normalize, [r, g, b])
                 
-                alpha = np.full_like(r_norm, 255, dtype=np.uint8)
-                # alpha = np.where((r == 0) & (g == 0) & (b == 0), 0, 1).astype(float)
+                # alpha = np.full_like(r_norm, 255, dtype=np.uint8)
+                alpha = np.where((r == 0) & (g == 0) & (b == 0), 0, 1).astype(float)
                 # non_transparent_mask = alpha > 0  # True for pixels that are not fully transparent
 
                 rgba_image = np.dstack((r_norm, g_norm, b_norm, alpha))
