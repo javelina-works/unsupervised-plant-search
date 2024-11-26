@@ -1,3 +1,4 @@
+import streamlit as st
 from bokeh.plotting import figure, curdoc
 from bokeh.models import (
     ColumnDataSource, Select, Slider, PointDrawTool, 
@@ -6,12 +7,9 @@ from bokeh.models import (
 )
 import base64
 from bokeh.layouts import column, row
-import rasterio
 from rasterio.io import MemoryFile
 import numpy as np
 from matplotlib import cm
-import sys
-from skimage.transform import resize
 import os
 import logging
 from logging_utils import setup_logger
