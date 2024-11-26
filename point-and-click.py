@@ -1,5 +1,7 @@
 import streamlit as st
-from bokeh.models import ColumnDataSource, FileInput, Div, Range1d
+from bokeh.models import (
+    ColumnDataSource, Div, Range1d, CrosshairTool, PointDrawTool
+)
 from bokeh.plotting import figure
 from bokeh.models import ColumnDataSource
 from PIL import Image
@@ -22,12 +24,14 @@ message = Div(text="Upload a TIF image to display.", width=400, height=30)
 # Create the plot
 p = figure(
     title="Uploaded TIF Viewer",
-    tools="pan,wheel_zoom,reset", 
     x_range=(0, 300), 
     y_range=(0, 300),
-    # sizing_mode="scale_height",  # Adjust figure height to viewport height
+    match_aspect=True,
+    active_scroll="wheel_zoom",
+    tools="pan,wheel_zoom,reset",  # Enable panning and zooming
+    sizing_mode="scale_height",  # Adjust figure height to viewport height
 )
-display_image = p.image_rgba(
+p.image_rgba(
     image="image", 
     source=image_source,
     x=0, 
@@ -35,6 +39,23 @@ display_image = p.image_rgba(
     dw=300, 
     dh=300, 
 )
+
+p.output_backend = "webgl"
+crosshair = CrosshairTool()
+p.add_tools(crosshair)
+
+
+# Add Support for draggable markers
+marker_source = ColumnDataSource(data={"x": [], "y": [], "label": []})
+points = p.scatter(x="x", y="y", size=10, color="red", source=marker_source) # Add circle markers to the plot
+p.line(x="x", y="y", source=marker_source, line_width=2, color="green")  # Line connecting points
+p.text(x="x", y="y", text="label", source=marker_source, text_font_size="10pt", text_baseline="middle", color="yellow")
+
+draw_tool = PointDrawTool(renderers=[points], empty_value="1")
+p.add_tools(draw_tool)
+p.toolbar.active_tap = draw_tool  # Set PointDrawTool as the active tool
+
+
 
 
 def process_tiff(file_contents):
