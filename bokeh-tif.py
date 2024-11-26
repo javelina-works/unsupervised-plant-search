@@ -53,49 +53,25 @@ def process_tiff(file_contents):
         image_array = None
 
         with MemoryFile(decoded) as memfile:
-            with memfile.open() as dataset:
-                image = dataset.read()
+            with memfile.open() as src:
+                r = src.read(1).astype(float)
+                g = src.read(2).astype(float)
+                b = src.read(3).astype(float)
 
-                # Convert the image to a NumPy array
-                image_array = np.flipud(np.array(image))
+                # Normalize RGB bands for display
+                r_norm = (r - np.min(r)) / (np.max(r) - np.min(r))
+                g_norm = (g - np.min(g)) / (np.max(g) - np.min(g))
+                b_norm = (b - np.min(b)) / (np.max(b) - np.min(b))
 
-        # print(image_array)
-
-                r = dataset.read(1).astype(float)
-                g = dataset.read(2).astype(float)
-                b = dataset.read(3).astype(float)
-
-                # Normalize bands to 0-255
-                def normalize(band):
-                    return (255 * (band - band.min()) / (band.max() - band.min())).astype(np.uint8)
-
-                def float_normalize(band):
-                    return ((band - band.min()) / (band.max() - band.min()))
-
-                r_norm, g_norm, b_norm = map(normalize, [r, g, b])
-                r_norm, g_norm, b_norm = map(float_normalize, [r, g, b])
-                
-                # alpha = np.full_like(r_norm, 255, dtype=np.uint8)
+                # Combine into an RGBA image
                 alpha = np.where((r == 0) & (g == 0) & (b == 0), 0, 1).astype(float)
-                # non_transparent_mask = alpha > 0  # True for pixels that are not fully transparent
+                non_transparent_mask = alpha > 0  # True for pixels that are not fully transparent
 
                 rgba_image = np.dstack((r_norm, g_norm, b_norm, alpha))
-
-                # rgba_image = np.flipud((image * 255).astype(np.uint8).view(dtype=np.uint32).reshape(image.shape[:2]))
-                rgba_image = rgba_image.view(dtype=np.uint32).reshape(r.shape[0], r.shape[1])
-
-                height, width, _ = image_array.shape
-                # rgba_image = image_array.view(dtype=np.uint32).reshape(height, width)
+                rgba_image = np.flipud((rgba_image * 255).astype(np.uint8).view(dtype=np.uint32).reshape(rgba_image.shape[:2]))
+                bounds = src.bounds  # Extract bounds for proper axis scaling
 
                 image_source.data = {"image": [rgba_image]}
-
-                # Update plot ranges
-                height, width = r.shape
-                p.x_range = Range1d(0, width)
-                p.y_range = Range1d(0, height)
-                p.width = width
-                p.height = height
-
 
         print("Success processing image!")
         message.text = "TIF processed and displayed successfully!"
