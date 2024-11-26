@@ -2,15 +2,16 @@ from bokeh.plotting import figure, curdoc
 from bokeh.models import (
     ColumnDataSource, Select, Slider, PointDrawTool, 
     RangeTool, Range1d, Div, DataTable, TableColumn, 
-    CustomJS, Button, CrosshairTool
+    CustomJS, Button, CrosshairTool, FileInput
 )
+import base64
 from bokeh.layouts import column, row
 import rasterio
 import numpy as np
 from matplotlib import cm
 import sys
 from skimage.transform import resize
-
+import os
 import logging
 from logging_utils import setup_logger
 
@@ -21,47 +22,147 @@ logger = setup_logger(name="my_project_logger", log_level=logging.DEBUG)
 # Step 1: Load GeoTIFF and preprocess
 tiff_file = "input/ESPG-4326-orthophoto.tif"  # Replace with your file path
 
-with rasterio.open(tiff_file) as src:
-    # Read RGB bands
-    r = src.read(1).astype(float)
-    g = src.read(2).astype(float)
-    b = src.read(3).astype(float)
+image_source = ColumnDataSource(
+    data={"image": []}, 
+    # default_values={"image": "input/ESPG-4326-orthophoto.tif"},
+)
+upload_message = Div(text="Upload a GeoTIFF to display.", width=400, height=30)
 
-    # Downscale image during loading
-    scale_factor = 1  # Adjust to a suitable resolution
-    r = resize(r, (int(r.shape[0] * scale_factor), int(r.shape[1] * scale_factor)), anti_aliasing=True)
-    g = resize(g, (int(g.shape[0] * scale_factor), int(g.shape[1] * scale_factor)), anti_aliasing=True)
-    b = resize(b, (int(b.shape[0] * scale_factor), int(b.shape[1] * scale_factor)), anti_aliasing=True)
+# FileInput widget
+file_input = FileInput(accept=".tif,.tiff")
+
+def process_geotiff(file_contents):
+    """Process the uploaded GeoTIFF and update the plot."""
+
+    global r_norm, g_norm, b_norm, non_transparent_mask, rgba_image, alpha, bounds
+
+    # Check if input is a local file path
+    if os.path.isfile(file_contents):
+        # It's a local file, so use it directly
+        temp_filename = file_contents
+    else:
+        # Assume input is Base64-encoded data
+        header, encoded = file_contents.split(",", 1) if "," in file_contents else (None, file_contents)
+
+        # Fix padding if necessary
+        missing_padding = len(encoded) % 4
+        if missing_padding != 0:
+            encoded += "=" * (4 - missing_padding)
+
+        # Decode Base64 content
+        decoded = base64.b64decode(encoded)
+
+        # Save the decoded content to a temporary file
+        temp_filename = "/tmp/uploaded.tif"
+        with open(temp_filename, "wb") as f:
+            f.write(decoded)
+    
+
+    # Load the GeoTIFF
+    with rasterio.open(temp_filename) as src:
+        # Read RGB bands
+        r = src.read(1).astype(float)
+        g = src.read(2).astype(float)
+        b = src.read(3).astype(float)
+
+        # Downscale image during loading
+        scale_factor = 1  # Adjust to a suitable resolution
+        r = resize(r, (int(r.shape[0] * scale_factor), int(r.shape[1] * scale_factor)), anti_aliasing=True)
+        g = resize(g, (int(g.shape[0] * scale_factor), int(g.shape[1] * scale_factor)), anti_aliasing=True)
+        b = resize(b, (int(b.shape[0] * scale_factor), int(b.shape[1] * scale_factor)), anti_aliasing=True)
+
+        # Normalize RGB bands
+        r_norm = (r - np.min(r)) / (np.max(r) - np.min(r))
+        g_norm = (g - np.min(g)) / (np.max(g) - np.min(g))
+        b_norm = (b - np.min(b)) / (np.max(b) - np.min(b))
+
+        # Combine into an RGBA image
+        alpha = np.where((r == 0) & (g == 0) & (b == 0), 0, 1).astype(float)
+        non_transparent_mask = alpha > 0  # True for pixels that are not fully transparent
+
+        rgba_image = np.dstack((r_norm, g_norm, b_norm, alpha))
 
 
-    # Normalize RGB bands for display
-    r_norm = (r - np.min(r)) / (np.max(r) - np.min(r))
-    g_norm = (g - np.min(g)) / (np.max(g) - np.min(g))
-    b_norm = (b - np.min(b)) / (np.max(b) - np.min(b))
+        # Compute new bounds based on downscaling
+        original_bounds = src.bounds  # Original bounds of the image
+        original_width = src.width
+        original_height = src.height
 
-    # Combine into an RGBA image
-    alpha = np.where((r == 0) & (g == 0) & (b == 0), 0, 1).astype(float)
-    non_transparent_mask = alpha > 0  # True for pixels that are not fully transparent
+        # Calculate the new bounds after downscaling
+        new_width = int(original_width * scale_factor)
+        new_height = int(original_height * scale_factor)
+        pixel_width = (original_bounds.right - original_bounds.left) / original_width
+        pixel_height = (original_bounds.top - original_bounds.bottom) / original_height
 
-    rgba_image = np.dstack((r_norm, g_norm, b_norm, alpha))
+        bounds = rasterio.coords.BoundingBox(
+            left=original_bounds.left,
+            right=original_bounds.left + pixel_width * new_width,
+            bottom=original_bounds.bottom,
+            top=original_bounds.bottom + pixel_height * new_height,
+        )
 
-    # Compute new bounds based on downscaling
-    original_bounds = src.bounds  # Original bounds of the image
-    original_width = src.width
-    original_height = src.height
+        # Update the ColumnDataSource
+        image_source.data = {
+            "image": [rgba_image],
+        }
+        # p.x_range.start = src.bounds.left
+        # p.x_range.end = src.bounds.right
+        # p.y_range.start = src.bounds.bottom
+        # p.y_range.end = src.bounds.top
+        # p.width = src.width
+        # p.height = src.height
 
-    # Calculate the new bounds after downscaling
-    new_width = int(original_width * scale_factor)
-    new_height = int(original_height * scale_factor)
-    pixel_width = (original_bounds.right - original_bounds.left) / original_width
-    pixel_height = (original_bounds.top - original_bounds.bottom) / original_height
+# with rasterio.open(tiff_file) as src:
+#     # Read RGB bands
+#     r = src.read(1).astype(float)
+#     g = src.read(2).astype(float)
+#     b = src.read(3).astype(float)
 
-    bounds = rasterio.coords.BoundingBox(
-        left=original_bounds.left,
-        right=original_bounds.left + pixel_width * new_width,
-        bottom=original_bounds.bottom,
-        top=original_bounds.bottom + pixel_height * new_height,
-    )
+#     # Downscale image during loading
+#     scale_factor = 1  # Adjust to a suitable resolution
+#     r = resize(r, (int(r.shape[0] * scale_factor), int(r.shape[1] * scale_factor)), anti_aliasing=True)
+#     g = resize(g, (int(g.shape[0] * scale_factor), int(g.shape[1] * scale_factor)), anti_aliasing=True)
+#     b = resize(b, (int(b.shape[0] * scale_factor), int(b.shape[1] * scale_factor)), anti_aliasing=True)
+
+
+#     # Normalize RGB bands for display
+#     r_norm = (r - np.min(r)) / (np.max(r) - np.min(r))
+#     g_norm = (g - np.min(g)) / (np.max(g) - np.min(g))
+#     b_norm = (b - np.min(b)) / (np.max(b) - np.min(b))
+
+#     # Combine into an RGBA image
+#     alpha = np.where((r == 0) & (g == 0) & (b == 0), 0, 1).astype(float)
+#     non_transparent_mask = alpha > 0  # True for pixels that are not fully transparent
+
+#     rgba_image = np.dstack((r_norm, g_norm, b_norm, alpha))
+
+#     # Compute new bounds based on downscaling
+#     original_bounds = src.bounds  # Original bounds of the image
+#     original_width = src.width
+#     original_height = src.height
+
+#     # Calculate the new bounds after downscaling
+#     new_width = int(original_width * scale_factor)
+#     new_height = int(original_height * scale_factor)
+#     pixel_width = (original_bounds.right - original_bounds.left) / original_width
+#     pixel_height = (original_bounds.top - original_bounds.bottom) / original_height
+
+#     bounds = rasterio.coords.BoundingBox(
+#         left=original_bounds.left,
+#         right=original_bounds.left + pixel_width * new_width,
+#         bottom=original_bounds.bottom,
+#         top=original_bounds.bottom + pixel_height * new_height,
+#     )
+
+
+# Callback for file upload
+def upload_callback(attr, old, new):
+    """Handle file upload."""
+    file_contents = file_input.value
+    if file_contents:
+        process_geotiff(file_contents.split(",")[1])  # Remove header and decode
+
+file_input.on_change("value", upload_callback)
 
 # DEBUGGING
 def inspect_index(index):
@@ -124,6 +225,7 @@ def to_bokeh_rgba(image):
 
 
 # Step 3: Prepare initial data and Bokeh components
+process_geotiff(tiff_file)
 initial_colormap = "RdYlGn"
 initial_image, initial_index = calculate_index("VARI")
 image_source = ColumnDataSource(data={"image": [to_bokeh_rgba(initial_image)]})
@@ -357,6 +459,6 @@ slider1 = Slider(title="Placeholder Slider 1", start=0, end=100, value=50)
 slider2 = Slider(title="Placeholder Slider 2", start=0, end=200, value=100)
 
 # Step 7: Layout the widgets and figure
-controls = column(coords, view_select, color_select, hist_figure, range_figure, range_display, slider1, slider2, save_button, data_table)
+controls = column(coords, file_input, view_select, color_select, hist_figure, range_figure, range_display, slider1, slider2, save_button, data_table)
 layout = row(p, controls, sizing_mode="stretch_both")
 curdoc().add_root(layout)
