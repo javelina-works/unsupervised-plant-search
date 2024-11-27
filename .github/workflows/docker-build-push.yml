@@ -1,4 +1,4 @@
-name: Build and Push Docker Image to GHCR (Organization)
+name: Build, Push, and Deploy
 
 on:
   push:
@@ -19,8 +19,8 @@ jobs:
         uses: docker/login-action@v2
         with:
           registry: ghcr.io
-          username: ${{ secrets.GITHUB_ACTOR }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_PAT_JAV_PLANT }}
 
       # Build and push the Docker image
       - name: Build and Push Docker Image
@@ -28,4 +28,17 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/your-organization/your-repo-name:latest
+          tags: ghcr.io/your-org-or-username/your-repo-name:latest
+
+  # deploy:
+  #   runs-on: ubuntu-latest
+  #   needs: build-push  # Ensure deployment only happens after the build-push job succeeds
+
+  #   steps:
+  #     # Deploy to Railway
+  #     - name: Trigger Railway Deployment
+  #       uses: railwayapp/cli-action@v1
+  #       with:
+  #         command: up
+  #       env:
+  #         RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
