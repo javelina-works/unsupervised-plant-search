@@ -163,6 +163,8 @@ def to_bokeh_rgba(image):
 
 # Step 3: Prepare initial data and Bokeh components
 logger.debug(f"Initializing default image: {tiff_file}")
+logger.debug(f"File exists: {os.path.isfile(tiff_file)}")
+logger.debug(f"Current working directory: {os.getcwd()}")
 process_geotiff(tiff_file)
 initial_colormap = "RdYlGn"
 initial_image, initial_index = calculate_index("VARI")
