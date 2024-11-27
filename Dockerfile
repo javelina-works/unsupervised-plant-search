@@ -23,4 +23,4 @@ COPY input/ /app/input/
 EXPOSE 5006
 
 # Set the command to run the Bokeh server
-CMD ["bokeh", "serve", "bokeh-int.py", "--port", "5006", "--address", "0.0.0.0", "--allow-websocket-origin", "localhost:5006", "--allow-websocket-origin", "unsupervised-plant-search-production.up.railway.app"]
+CMD ["bokeh", "serve", "bokeh-int.py", "--port", "5006", "--address", "0.0.0.0", "--allow-websocket-origin", "localhost:5006", "--allow-websocket-origin", "unsupervised-plant-search-production.up.railway.app", "--websocket-max-message-size=250000000"]

@@ -3,6 +3,7 @@ Unsupervised computer vision to find target plants from a geo-referenced orthoph
 
 
 ## Future Improvements
+- [ ] Save to file needs to open a dialogue box, not save to server
 - [ ] Optimize callbacks
     - Precompute & cache computations
 - [ ] Debounce & delay callbacks
