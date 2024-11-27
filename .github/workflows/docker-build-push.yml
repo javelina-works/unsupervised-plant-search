@@ -38,10 +38,16 @@ jobs:
     needs: build-push  # Ensure deployment only happens after the build-push job succeeds
 
     steps:
+      # Install Railway CLI
+      - name: Install Railway CLI
+        run: |
+          curl -fsSL https://railway.app/install.sh | sh
+          export PATH="$HOME/.railway/bin:$PATH"
+
       # Deploy to Railway
-      - name: Trigger Railway Deployment
-        uses: railwayapp/cli-action@v1
-        with:
-          command: up
+      - name: Deploy to Railway
         env:
           RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+        run: |
+          railway login --token $RAILWAY_API_TOKEN
+          railway up --no-confirm
