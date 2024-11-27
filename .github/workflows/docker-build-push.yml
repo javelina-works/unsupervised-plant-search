@@ -27,6 +27,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
+          file: ./Dockerfile # NOT building from full compose
           push: true
           tags: |
             ghcr.io/javelina-works/unsupervised-plant-search:latest

@@ -1,0 +1,8 @@
+# Ignore docker-compose files
+docker-compose.yml
+docker-compose.override.yml
+
+# Ignore other unnecessary files
+.git
+.gitignore
+*.md
