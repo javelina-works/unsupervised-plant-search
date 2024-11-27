@@ -1,6 +1,7 @@
 import streamlit as st
 from bokeh.models import (
-    ColumnDataSource, Div, Range1d, CrosshairTool, PointDrawTool
+    ColumnDataSource, Div, Range1d, CrosshairTool, PointDrawTool, CustomJS,
+    TableColumn, DataTable
 )
 from bokeh.plotting import figure
 from bokeh.models import ColumnDataSource
@@ -8,7 +9,7 @@ from PIL import Image
 import base64
 import numpy as np
 from rasterio.io import MemoryFile
-
+import pandas as pd
 
 
 # Page title and description
@@ -55,7 +56,28 @@ draw_tool = PointDrawTool(renderers=[points], empty_value="1")
 p.add_tools(draw_tool)
 p.toolbar.active_tap = draw_tool  # Set PointDrawTool as the active tool
 
+# DataTable to display clicked points
 
+# fake_source = pd.DataFrame(columns=["x", "y", "label"])
+# columns = [
+#     TableColumn(field="label", title="Waypoint #"),
+#     TableColumn(field="x", title="X Coordinate"),
+#     TableColumn(field="y", title="Y Coordinate"),
+# ]
+# data_table = DataTable(source=fake_source, columns=columns, width=400, height=280)
+
+
+js_callback = CustomJS(args=dict(source=marker_source), code="""
+    const data = source.data;
+    const labels = data['label'];
+    for (let i = 0; i < data['x'].length; i++) {
+        labels[i] = (i + 1).toString();  // Incremental numbering starts from 1
+    }
+    source.change.emit();  // Trigger update
+""")
+
+# Attach the CustomJS to the data source
+marker_source.js_on_change('data', js_callback)
 
 
 def process_tiff(file_contents):
@@ -105,15 +127,19 @@ def process_tiff(file_contents):
 
 
 
-
-
 # Image uploader
 uploaded_file = st.file_uploader("Upload an image", type=["png", "jpg", "jpeg", "tiff"])
 
 if uploaded_file:
-
     bytes_data = uploaded_file.getvalue()
     image_rgba = process_tiff(bytes_data)
 
-    # Display the Bokeh plot
-    st.bokeh_chart(p)
+# Display the Bokeh plot
+st.bokeh_chart(p)
+
+st.write("### Waypoints Table")
+if st.button("Update Marker Data"):
+    # Force Streamlit to rerun and display updated marker_source
+    st.write(marker_source.data)
+
+# st.bokeh_chart(data_table)
