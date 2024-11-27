@@ -1,12 +1,11 @@
-import streamlit as st
 from bokeh.plotting import figure, curdoc
 from bokeh.models import (
     ColumnDataSource, Select, Slider, PointDrawTool, 
     RangeTool, Range1d, Div, DataTable, TableColumn, 
     CustomJS, Button, CrosshairTool, FileInput
 )
-import base64
 from bokeh.layouts import column, row
+import base64
 from rasterio.io import MemoryFile
 import numpy as np
 from matplotlib import cm
