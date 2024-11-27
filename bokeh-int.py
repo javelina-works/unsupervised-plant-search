@@ -18,7 +18,7 @@ logger = setup_logger(name="my_project_logger", log_level=logging.DEBUG)
 
 
 # Step 1: Load GeoTIFF and preprocess
-tiff_file = "input/ESPG-4326-orthophoto.tif"  # Replace with your file path
+tiff_file = "./input/ESPG-4326-orthophoto.tif"  # Replace with your file path
 
 image_source = ColumnDataSource(
     data={"image": []}, 
@@ -154,10 +154,13 @@ def to_bokeh_rgba(image):
 
 
 # Step 3: Prepare initial data and Bokeh components
+logger.debug("Initializing default image")
 process_geotiff(tiff_file)
 initial_colormap = "RdYlGn"
 initial_image, initial_index = calculate_index("VARI")
 image_source = ColumnDataSource(data={"image": [to_bokeh_rgba(initial_image)]})
+logger.debug("Initial image prepared.")
+
 
 # Compute histogram
 def compute_histogram(index_values):
