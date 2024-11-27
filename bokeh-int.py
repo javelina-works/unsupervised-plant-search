@@ -19,7 +19,7 @@ logger = setup_logger(name="my_project_logger", log_level=logging.DEBUG)
 
 # Step 1: Load GeoTIFF and preprocess
 # tiff_file = "input/ESPG-4326-orthophoto.tif"  # Replace with your file path
-tiff_file = "input/Sample-Tiff-File-download-for-Testing.tiff"  # Replace with your file path
+tiff_file = "input/MADRID_RGB.tif"  # Replace with your file path
 
 image_source = ColumnDataSource(
     data={"image": []}, 
