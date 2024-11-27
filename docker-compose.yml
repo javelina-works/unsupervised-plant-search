@@ -1,0 +1,19 @@
+version: '3.8'
+services:
+  bokeh-app:
+    image: bokeh-app:v0.1
+    build:
+      context: .
+    ports:
+      - "5006" # Keep internal port mapping for debugging
+    environment:
+      - BOKEH_ALLOW_WS_ORIGIN=*
+  
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - bokeh-app
