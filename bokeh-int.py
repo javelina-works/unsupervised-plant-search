@@ -29,12 +29,20 @@ upload_message = Div(text="Upload a GeoTIFF to display.", width=400, height=30)
 # FileInput widget
 file_input = FileInput(accept=".tif,.tiff")
 
+def fix_base64_padding(data: str) -> str:
+    """Fix padding for Base64 strings."""
+    missing_padding = len(data) % 4
+    if missing_padding:
+        data += "=" * (4 - missing_padding)
+    return data
+
 def process_geotiff(file_contents):
     """Process the uploaded GeoTIFF and update the plot."""
 
     global r_norm, g_norm, b_norm, non_transparent_mask, rgba_image, alpha, bounds
 
     decoded = None  # To hold the decoded or raw data
+    file_contents = fix_base64_padding(file_contents) # Fix padding before decoding
 
     # Handle local file or uploaded file
     if os.path.isfile(file_contents):
@@ -154,7 +162,7 @@ def to_bokeh_rgba(image):
 
 
 # Step 3: Prepare initial data and Bokeh components
-logger.debug("Initializing default image")
+logger.debug("Initializing default image: ", tiff_file)
 process_geotiff(tiff_file)
 initial_colormap = "RdYlGn"
 initial_image, initial_index = calculate_index("VARI")
