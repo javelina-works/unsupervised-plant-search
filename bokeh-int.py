@@ -18,7 +18,7 @@ logger = setup_logger(name="my_project_logger", log_level=logging.DEBUG)
 
 
 # Step 1: Load GeoTIFF and preprocess
-tiff_file = "./input/ESPG-4326-orthophoto.tif"  # Replace with your file path
+tiff_file = "input/ESPG-4326-orthophoto.tif"  # Replace with your file path
 
 image_source = ColumnDataSource(
     data={"image": []}, 
@@ -42,7 +42,7 @@ def process_geotiff(file_contents):
     global r_norm, g_norm, b_norm, non_transparent_mask, rgba_image, alpha, bounds
 
     decoded = None  # To hold the decoded or raw data
-    file_contents = fix_base64_padding(file_contents) # Fix padding before decoding
+    # file_contents = fix_base64_padding(file_contents) # Fix padding before decoding
 
     # Handle local file or uploaded file
     if os.path.isfile(file_contents):
@@ -162,7 +162,7 @@ def to_bokeh_rgba(image):
 
 
 # Step 3: Prepare initial data and Bokeh components
-logger.debug("Initializing default image: ", tiff_file)
+logger.debug(f"Initializing default image: {tiff_file}")
 process_geotiff(tiff_file)
 initial_colormap = "RdYlGn"
 initial_image, initial_index = calculate_index("VARI")
