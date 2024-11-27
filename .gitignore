@@ -1,4 +1,7 @@
 
+# Local testing of SSL termination
+ssl/
+
 # Ignore input datasets
 input/
 
