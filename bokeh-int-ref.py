@@ -178,30 +178,7 @@ hist, edges = compute_histogram(initial_index)
 hist_source = ColumnDataSource(data={"top": hist, "left": edges[:-1], "right": edges[1:]})
 
 
-# [!] Works great! Leave this one alone
-# Step 3: Create a Bokeh figure
-p = figure(
-    title="Interactive GeoTIFF Viewer with Draggable Markers",
-    x_range=(bounds.left, bounds.right),
-    y_range=(bounds.bottom, bounds.top),
-    match_aspect=True,
-    active_scroll="wheel_zoom",
-    tools="pan,wheel_zoom,reset",  # Enable panning and zooming
-    sizing_mode="scale_height",  # Adjust figure height to viewport height
-)
 
-# Add the RGBA image to the plot
-p.image_rgba(
-    image="image",
-    source=image_source,
-    x=bounds.left,
-    y=bounds.bottom,
-    dw=bounds.right - bounds.left,
-    dh=bounds.top - bounds.bottom,
-)
-p.output_backend = "webgl"
-crosshair = CrosshairTool()
-p.add_tools(crosshair)
 
 # Div to display the coordinates
 coords = Div(text="Mouse Coordinates: (x: --, y: --)", width=300, height=30)
@@ -300,27 +277,7 @@ draw_tool = PointDrawTool(renderers=[points], empty_value="1")
 p.add_tools(draw_tool)
 p.toolbar.active_tap = draw_tool  # Set PointDrawTool as the active tool
 
-# DataTable to display clicked points
-columns = [
-    TableColumn(field="label", title="Waypoint #"),
-    TableColumn(field="x", title="X Coordinate"),
-    TableColumn(field="y", title="Y Coordinate"),
-]
-data_table = DataTable(source=marker_source, columns=columns, width=400, height=280)
 
-# CustomJS to number points incrementally
-# Good: Faster to handle this in the browser
-js_callback = CustomJS(args=dict(source=marker_source), code="""
-    const data = source.data;
-    const labels = data['label'];
-    for (let i = 0; i < data['x'].length; i++) {
-        labels[i] = (i + 1).toString();  // Incremental numbering starts from 1
-    }
-    source.change.emit();  // Trigger update
-""")
-
-# Attach the CustomJS to the data source
-marker_source.js_on_change('data', js_callback)
 
 # Button to save data to file
 save_button = Button(label="Save to File", button_type="success")

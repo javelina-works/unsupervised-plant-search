@@ -2,7 +2,7 @@ import rasterio
 import numpy as np
 import matplotlib.pyplot as plt
 import logging
-from logging_utils import setup_logger
+from utils.logging_utils import setup_logger
 
 
 # Where is your image?
