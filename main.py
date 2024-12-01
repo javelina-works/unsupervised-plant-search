@@ -3,11 +3,11 @@ from bokeh.layouts import column, row
 from bokeh.models import Div, Select, Slider, Button, ColumnDataSource
 
 from utils.logging_utils import setup_logger
+import logging
 from utils.geo_utils import process_geotiff, calculate_index, to_bokeh_rgba, compute_histogram
 # from widgets import create_histogram_figures, create_image_figure, create_controls
 from widgets.planner import create_image_figure, create_planner_column
 
-import logging
 
 # Initialize logger
 logger = setup_logger(name="geo_tiff_app", log_level=logging.DEBUG)

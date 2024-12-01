@@ -5,31 +5,17 @@ from bokeh.models import (
     ColumnDataSource, PointDrawTool, Button, Div,
 )
 
-# In this module:
-# - Manipulated image figure
-# - Data table
-
-
 
 def create_image_figure(bounds, image_source):
     """Create the Bokeh figure for displaying the image."""
     p = figure(
-    title="Interactive GeoTIFF Viewer",
-    x_range=(bounds.left, bounds.right),
-    y_range=(bounds.bottom, bounds.top),
-    match_aspect=True,
-    aspect_ratio=2.0,
-    aspect_scale=1.0,
-    height_policy="fit",
-    width_policy="fit",
-    active_scroll="wheel_zoom",
-    tools="pan,wheel_zoom,reset",  # Enable panning and zooming
-    # width=800,  # Default width
-    # height=600,  # Default height
-    # sizing_mode="scale_height",  # Adjust figure height to viewport height
-    # sizing_mode="scale_width"
-    # sizing_mode="scale_both"
-)
+        title="Interactive GeoTIFF Viewer",
+        x_range=(bounds.left, bounds.right),
+        y_range=(bounds.bottom, bounds.top),
+        active_scroll="wheel_zoom",
+        tools="pan,wheel_zoom,reset",  # Enable panning and zooming
+        sizing_mode="scale_height",  # Adjust figure height to viewport height
+    )
 
     # Add the RGBA image to the plot
     p.image_rgba(
@@ -42,10 +28,6 @@ def create_image_figure(bounds, image_source):
     )
     # p.output_backend = "webgl"
     return p
-
-
-
-
 
 def create_planner_column(image_figure):
 
@@ -132,8 +114,6 @@ def create_planner_column(image_figure):
         }
         source.change.emit();  // Trigger update
     """)
-
-    # Attach the CustomJS to the data source
     marker_source.js_on_change('data', js_callback)
 
 
@@ -143,6 +123,9 @@ def create_planner_column(image_figure):
     image_container.sizing_mode = "stretch_both"
 
     data_col = column(coords_display, save_button, data_table)
+    data_col.width = 400
+    data_col.min_width = 400
+    data_col.sizing_mode = "scale_height"
 
     planner_row = row(image_container, data_col)
     planner_row.sizing_mode = "stretch_both"
