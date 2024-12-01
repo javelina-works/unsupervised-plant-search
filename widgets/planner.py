@@ -1,5 +1,5 @@
 from bokeh.plotting import figure
-from bokeh.layouts import column
+from bokeh.layouts import column, row
 from bokeh.models import (
     CrosshairTool, TableColumn, DataTable, CustomJS,
     ColumnDataSource, PointDrawTool, Button, Div,
@@ -18,9 +18,17 @@ def create_image_figure(bounds, image_source):
     x_range=(bounds.left, bounds.right),
     y_range=(bounds.bottom, bounds.top),
     match_aspect=True,
+    aspect_ratio=2.0,
+    aspect_scale=1.0,
+    height_policy="fit",
+    width_policy="fit",
     active_scroll="wheel_zoom",
     tools="pan,wheel_zoom,reset",  # Enable panning and zooming
-    sizing_mode="scale_height",  # Adjust figure height to viewport height
+    # width=800,  # Default width
+    # height=600,  # Default height
+    # sizing_mode="scale_height",  # Adjust figure height to viewport height
+    # sizing_mode="scale_width"
+    # sizing_mode="scale_both"
 )
 
     # Add the RGBA image to the plot
@@ -46,7 +54,7 @@ def create_planner_column(image_figure):
 
     # Div to display the coordinates
     # ==============================
-    coords_display = Div(text="Mouse Coordinates: (x: --, y: --)", width=300, height=30)
+    coords_display = Div(text="Mouse Coordinates: (x: --, y: --)", width=400, height=30)
 
     # CustomJS callback for updating coordinates
     callback = CustomJS(args=dict(coords=coords_display), code="""
@@ -131,8 +139,13 @@ def create_planner_column(image_figure):
 
     # Organize interactive image into a column layout
     # ===============================================
-    # image_col = column(coords_display, image_figure, save_button, data_table)
-    image_col = column(image_figure)
-    return image_col
+    image_container = column(image_figure)
+    image_container.sizing_mode = "stretch_both"
+
+    data_col = column(coords_display, save_button, data_table)
+
+    planner_row = row(image_container, data_col)
+    planner_row.sizing_mode = "stretch_both"
+    return planner_row
 
 

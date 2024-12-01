@@ -44,6 +44,6 @@ planner = create_planner_column(image_figure)
 
 
 # Layout the widgets and figures
-layout = row(planner, sizing_mode="stretch_both")
+layout = column(planner, sizing_mode="stretch_both")
 curdoc().add_root(layout)
 logger.info("Application started.")

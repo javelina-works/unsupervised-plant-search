@@ -180,18 +180,7 @@ hist_source = ColumnDataSource(data={"top": hist, "left": edges[:-1], "right": e
 
 
 
-# Div to display the coordinates
-coords = Div(text="Mouse Coordinates: (x: --, y: --)", width=300, height=30)
 
-# CustomJS callback for updating coordinates
-callback = CustomJS(args=dict(coords=coords), code="""
-    const {x, y} = cb_obj; // Get the mouse event from cb_obj
-    // Update the Div text with the new coordinates
-    coords.text = `Mouse Coordinates: (x: ${x.toFixed(7)}, y: ${y.toFixed(7)})`;
-""")
-
-# Attach the CustomJS to the plot's mouse move event
-p.js_on_event("mousemove", callback)
 
 
 # Step 5: Single Histogram as a Line Graph
@@ -267,49 +256,10 @@ spectrum_range.x_range.on_change("end", update_range)
 
 
 
-# Step 4: Create a data source for draggable markers
-marker_source = ColumnDataSource(data={"x": [], "y": [], "label": []})
-points = p.scatter(x="x", y="y", size=10, color="red", source=marker_source) # Add circle markers to the plot
-p.line(x="x", y="y", source=marker_source, line_width=2, color="green")  # Line connecting points
-p.text(x="x", y="y", text="label", source=marker_source, text_font_size="10pt", text_baseline="middle", color="yellow")
-
-draw_tool = PointDrawTool(renderers=[points], empty_value="1")
-p.add_tools(draw_tool)
-p.toolbar.active_tap = draw_tool  # Set PointDrawTool as the active tool
 
 
 
-# Button to save data to file
-save_button = Button(label="Save to File", button_type="success")
 
-# Callback to save data to file
-def save_to_file():
-    """Save the current DataTable values to a waypoints file."""
-    data = marker_source.data  # Get the data from the source
-
-    waypoints_filename = 'gen2.waypoints'
-    with open(waypoints_filename, 'w') as f:
-        # Write header for the MAVLink file (QGroundControl WPL version)
-        f.write("QGC WPL 110\n")  # Write header
-        
-        # Check if there's any data to write
-        num_points = len(data["x"])  # Number of rows
-        if num_points == 0:
-            print("No points to save!")
-            return
-
-        # Add home point (index 0)
-        # Home point command = 3, current WP = 1
-        f.write(f"0\t1\t0\t3\t0\t0\t0\t0\t{data['y'][0]}\t{data['x'][0]}\t100.000000\t1\n")
-
-        # Add waypoints starting from index 1 (regular waypoints)
-        for index in range(1, num_points):
-            # Waypoint command = 16
-            f.write(f"{index}\t0\t0\t16\t0\t0\t0\t0\t{data['y'][index]}\t{data['x'][index]}\t100.000000\t1\n")
-
-    print(f"Waypoints have been exported to {waypoints_filename}")
-
-save_button.on_click(save_to_file)
 
 
 # Create a dropdown for toggling views
