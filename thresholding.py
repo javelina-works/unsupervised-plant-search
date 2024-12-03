@@ -13,6 +13,7 @@
 #     name: python3
 # ---
 
+# +
 # Load required libraries
 import numpy as np
 import cv2
@@ -26,7 +27,12 @@ from scipy.ndimage import gaussian_filter
 import rasterio
 from rasterio.plot import show
 from PIL import Image
+from ipywidgets import interact, FloatSlider
 
+
+# %matplotlib inline
+
+# -
 
 # ## Load and Display Image
 #
@@ -124,7 +130,7 @@ A_normalized = (A_normalized - A_normalized.min()) / (A_normalized.max() - A_nor
 # A_normalized = -A  # Flip to make green positive
 
 # Visualize normalized green emphasis
-plt.figure(figsize=(10, 8))
+plt.figure(figsize=(5, 4))
 plt.imshow(A_normalized, cmap='Greens')
 plt.title("Normalized A Channel (Green Emphasis)")
 plt.axis("off")
@@ -132,22 +138,35 @@ plt.show()
 
 
 # +
-# Threshold green areas
-green_mask = A_normalized > 0.5  # Adjust threshold as needed
 
-# Green Mask Visualization
-plt.figure(figsize=(10, 8))
-plt.imshow(green_mask, cmap='gray')
-plt.title("Green Mask (Thresholded A Channel)")
-plt.axis("off")
-cbar = plt.colorbar(plt.cm.ScalarMappable(cmap="gray"), ax=plt.gca(), shrink=0.8)
-cbar.set_ticks([0, 1])
-cbar.set_ticklabels(["Non-Vegetation", "Vegetation"])
-cbar.set_label("Mask Values")
-plt.show()
+# Function to apply thresholding and visualize the green mask
+def update_threshold(threshold):
+    green_mask = A_normalized > threshold  # Apply threshold
+    
+    # Create a side-by-side comparison plot
+    fig, axes = plt.subplots(1, 2, figsize=(15, 8))
+    
+    # Original RGB image
+    axes[0].imshow(image)
+    axes[0].set_title("Original RGB Image")
+    axes[0].axis("off")
+    
+    # Green mask
+    axes[1].imshow(green_mask, cmap='Greens')
+    axes[1].set_title(f"Green Mask (Threshold = {threshold:.2f})")
+    axes[1].axis("off")
+    
+    plt.tight_layout()
+    plt.show()
 
+
+# Create an interactive slider for threshold adjustment
+start_value = 0.75
+interact(update_threshold, threshold=FloatSlider(value=start_value, min=0.0, max=1.0, step=0.01));
 
 # -
+
+# ### RGB Color Space
 
 # ## Preprocessing
 
