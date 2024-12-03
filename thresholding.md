@@ -31,7 +31,6 @@ from ipywidgets import interact, FloatSlider
 
 
 %matplotlib inline
-
 ```
 
 ## Load and Display Image
@@ -141,6 +140,51 @@ plt.show()
 ```
 
 ```python
+# Function to overlay the mask on the original image
+def overlay_mask(image, mask, color=(0, 255, 0), alpha=0.5):
+    """
+    Overlay the binary mask on the original image.
+    
+    Parameters:
+    - image: Original RGB image (H, W, 3).
+    - mask: Binary mask (H, W), values are True for mask.
+    - color: Tuple (R, G, B) for the overlay color.
+    - alpha: Transparency of the overlay (0 = transparent, 1 = opaque).
+    
+    Returns:
+    - Image with overlay applied.
+    """
+    overlay = np.zeros_like(image, dtype=np.uint8)
+    overlay[mask] = color  # Apply color to mask regions
+    
+    blended = image.copy()
+    blended[mask] = (blended[mask] * (1 - alpha) + overlay[mask] * alpha).astype(np.uint8)
+    # blended = (blended * (1 - alpha) + overlay * alpha).astype(np.uint8)
+    return blended
+
+# Interactive function for threshold and opacity adjustment
+def update_threshold_and_opacity(threshold, opacity):
+    green_mask = A_normalized > threshold  # Apply threshold
+    
+    # Create the overlayed image
+    overlayed_image = overlay_mask(image, green_mask, color=(0, 255, 0), alpha=opacity)
+    
+    # Visualize the overlay
+    plt.figure(figsize=(10, 8))
+    plt.imshow(overlayed_image)
+    plt.title(f"Overlayed Image (Threshold = {threshold:.2f}, Opacity = {opacity:.2f})")
+    plt.axis("off")
+    plt.show()
+
+# Create interactive sliders for threshold and opacity adjustment
+interact(
+    update_threshold_and_opacity,
+    threshold=FloatSlider(value=0.75, min=0.0, max=1.0, step=0.01, description="Threshold"),
+    opacity=FloatSlider(value=0.5, min=0.0, max=1.0, step=0.01, description="Opacity")
+);
+```
+
+```python
 
 # Function to apply thresholding and visualize the green mask
 def update_threshold(threshold):
@@ -162,7 +206,6 @@ def update_threshold(threshold):
     plt.tight_layout()
     plt.show()
 
-
 # Create an interactive slider for threshold adjustment
 start_value = 0.75
 interact(update_threshold, threshold=FloatSlider(value=start_value, min=0.0, max=1.0, step=0.01));
@@ -170,103 +213,3 @@ interact(update_threshold, threshold=FloatSlider(value=start_value, min=0.0, max
 ```
 
 ### RGB Color Space
-
-
-## Preprocessing
-
-```python
-# Convert to LAB color space and smooth the image
-def preprocess_image(image):
-    lab_image = cv2.cvtColor(image, cv2.COLOR_RGB2LAB)
-    smoothed_image = gaussian_filter(lab_image[:, :, 1], sigma=2)  # Apply Gaussian filter on 'A' channel
-    return smoothed_image
-
-smoothed_image = preprocess_image(image)
-plt.figure(figsize=(10, 8))
-plt.imshow(smoothed_image, cmap='gray')
-plt.title("Preprocessed Image")
-plt.axis('off')
-plt.show()
-
-```
-
-```python
-# Step 1: Convert to LAB
-lab_image = cv2.cvtColor(image, cv2.COLOR_RGB2LAB)
-L, A, B = cv2.split(lab_image)
-
-# Step 2: Normalize and Enhance Green Areas
-green_emphasis = (A - A.min()) / (A.max() - A.min())  # Normalize A channel
-
-# Step 3: Mask Non-Green Areas
-green_mask = green_emphasis > 0.5  # Thresholding for green dominance
-
-# Step 4: Calculate Vegetation Index (ExG) in RGB
-r, g, b = image[:, :, 0], image[:, :, 1], image[:, :, 2]
-exg = 2 * g - r - b
-
-# Step 5: Apply the Mask to the Index
-exg_masked = exg * green_mask
-
-# Visualize the Final Result
-plt.imshow(exg_masked, cmap='Greens')
-plt.title("Vegetation Index with LAB Preprocessing")
-plt.axis("off")
-plt.show()
-```
-
-```python
-# Flatten the image for clustering
-def cluster_image(image, n_clusters=3):
-    pixels = image.reshape(-1, 3)
-    kmeans = KMeans(n_clusters=n_clusters, random_state=42)
-    labels = kmeans.fit_predict(pixels)
-    clustered_image = labels.reshape(image.shape[:2])
-    return clustered_image
-
-clustered = cluster_image(image)
-plt.figure(figsize=(10, 8))
-plt.imshow(clustered, cmap='viridis')
-plt.title("KMeans Clustering")
-plt.axis('off')
-plt.show()
-
-```
-
-```python
-# Apply Otsu thresholding to a spectral index (e.g., Excess Green)
-def calculate_excess_green(image):
-    r, g, b = image[:, :, 0], image[:, :, 1], image[:, :, 2]
-    exg = 2 * g - r - b  # Excess green calculation
-    return exg
-
-def threshold_image(image):
-    exg = calculate_excess_green(image)
-    thresh = threshold_otsu(exg)
-    binary = exg > thresh
-    return binary
-
-binary_mask = threshold_image(image)
-plt.figure(figsize=(10, 8))
-plt.imshow(binary_mask, cmap='gray')
-plt.title("Thresholded Vegetation Mask")
-plt.axis('off')
-plt.show()
-
-```
-
-```python
-# Overlay binary mask onto the original image
-def overlay_mask(image, mask):
-    overlay = image.copy()
-    overlay[mask] = [0, 255, 0]  # Highlight vegetation in green
-    return overlay
-
-overlay = overlay_mask(image, binary_mask)
-plt.figure(figsize=(10, 8))
-plt.imshow(overlay)
-plt.title("Overlay of Vegetation Mask on Original Image")
-plt.axis('off')
-plt.show()
-
-```
