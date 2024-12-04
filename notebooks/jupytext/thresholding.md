@@ -528,8 +528,8 @@ def apply_dbscan_clustering(data, eps=0.05, min_samples=10):
     return labels
 
 # Example: Use ExG for DBSCAN clustering
-data, original_shape = prepare_data_for_clustering(image, use_index="ExG")
-dbscan_labels = apply_dbscan_clustering(data, eps=0.12, min_samples=5)
-visualize_clusters(dbscan_labels, original_shape, title="DBSCAN Clustering")
+# data, original_shape = prepare_data_for_clustering(image, use_index="ExG")
+# dbscan_labels = apply_dbscan_clustering(data, eps=0.12, min_samples=5)
+# visualize_clusters(dbscan_labels, original_shape, title="DBSCAN Clustering")
 
 ```
