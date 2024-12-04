@@ -32,14 +32,10 @@ import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
-from skimage.filters import threshold_otsu
 from skimage.color import rgb2lab
 from scipy.ndimage import gaussian_filter, label
-import rasterio
-from rasterio.plot import show
 from PIL import Image
 from ipywidgets import interact, FloatSlider
-import os
 import sys
 from pathlib import Path
 
@@ -174,10 +170,10 @@ plt.show()
     - Especially useful for robust vegetation assessments.
 
 ```python
-from plant_search.vegetation_indices import calculate_all_indices
+from plant_search.vegetation_indices import calculate_all_rgb_indices
 
 # Calculate all indices
-indices = calculate_all_indices(image)
+indices = calculate_all_rgb_indices(image)
 
 # Prepare the indices and titles for plotting
 index_titles = [
@@ -212,7 +208,37 @@ plt.show()
 
 ### Histogram-Based Thresholding
 
+Histogram-based thresholding is a widely used technique in image processing for segmenting an image into meaningful regions. It leverages the pixel intensity distribution (histogram) to determine an optimal threshold value that separates the foreground (objects of interest) from the background.
+
+### How It Works:
+1. **Pixel Intensity Distribution**:
+   - A histogram represents the frequency of pixel intensities in the image, ranging from 0 (black) to 255 (white) for grayscale images.
+
+2. **Manual Thresholding**:
+   - The user selects a threshold value, and pixels are classified as foreground if their intensity is above the threshold, or background otherwise.
+
+3. **Automatic Thresholding**:
+   - Algorithms like **Otsu’s Method** compute an optimal threshold automatically by minimizing intra-class variance (the variance within the foreground and background).
+
+4. **Binary Segmentation**:
+   - The result is a binary mask where pixels are either 1 (foreground) or 0 (background), suitable for object detection and analysis.
+
+**Advantages:**
+- Simple to implement and computationally efficient.
+- Works well when the foreground and background have distinct intensity distributions.
+
+**Limitations:**
+- Struggles with complex images where foreground and background intensities overlap.
+- Sensitive to noise and uneven illumination.
+
+**Applications:**
+- Extracting objects from grayscale images.
+- Preprocessing for computer vision tasks like edge detection and object recognition.
+
+
 ```python
+from skimage.filters import threshold_otsu
+
 # Convert the RGB image to grayscale
 gray_image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
 
@@ -237,3 +263,121 @@ plt.title("Binary Mask (Otsu's Threshold)")
 plt.axis("off")
 plt.show()
 ```
+
+### Texture-Based Analysis
+
+
+#### Edge Detection
+
+```python
+
+# Convert the RGB image to grayscale
+gray_image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+
+# Apply Canny edge detection
+# edges = cv2.Canny(gray_image, threshold1=50, threshold2=150)
+
+exg_normalized = cv2.normalize(indices["ExG"], None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX)
+exg_uint8 = exg_normalized.astype(np.uint8)  # Convert to uint8 format
+
+edges = cv2.Canny(exg_uint8, threshold1=50, threshold2=150)
+
+# Visualize edges
+plt.figure(figsize=(8, 6))
+plt.imshow(edges, cmap='gray')
+plt.title("Edges Detected Using Canny")
+plt.axis("off")
+plt.show()
+
+```
+
+```python
+import numpy as np
+import matplotlib.pyplot as plt
+from ipywidgets import interact, IntSlider, FloatSlider
+
+# Interactive function
+def interactive_canny_and_mask(threshold1, threshold2, veg_threshold):
+    """
+    Perform Canny edge detection on a vegetation index and combine with a binary mask.
+    
+    Parameters:
+    - threshold1: Lower threshold for Canny.
+    - threshold2: Upper threshold for Canny.
+    - veg_threshold: Threshold for vegetation index binary mask.
+    """
+    # Normalize and process ExG
+    exg_normalized = cv2.normalize(indices["ExG"], None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX)
+    exg_uint8 = exg_normalized.astype(np.uint8)
+
+    # Apply Canny edge detection
+    edges = cv2.Canny(exg_uint8, threshold1=threshold1, threshold2=threshold2)
+
+    # Create binary mask for vegetation index
+    binary_mask = exg_normalized > veg_threshold
+
+    # Combine edges and binary mask
+    combined_mask = edges.astype(bool) | binary_mask
+
+    # Visualize results
+    fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+
+    # Canny edges
+    axes[0].imshow(edges, cmap='Greens')
+    axes[0].set_title("Canny Edges")
+    axes[0].axis("off")
+
+    # Binary vegetation mask
+    axes[1].imshow(binary_mask, cmap='Greens')
+    axes[1].set_title(f"Vegetation Mask (Threshold = {veg_threshold})")
+    axes[1].axis("off")
+
+    # Combined mask
+    axes[2].imshow(combined_mask, cmap='Greens')
+    axes[2].set_title("Combined Mask (Edges + Vegetation)")
+    axes[2].axis("off")
+
+    plt.tight_layout()
+    plt.show()
+
+# Create interactive sliders
+interact(
+    interactive_canny_and_mask,
+    threshold1=IntSlider(value=50, min=0, max=255, step=1, description="Canny Thresh1"),
+    threshold2=IntSlider(value=150, min=0, max=255, step=1, description="Canny Thresh2"),
+    veg_threshold=FloatSlider(value=50, min=0, max=255, step=1, description="Veg Threshold")
+);
+
+```
+
+#### Local Texture Analysis (Entropy)
+
+```python
+from skimage.filters.rank import entropy
+from skimage.morphology import disk
+
+# Calculate entropy using a disk-shaped neighborhood
+entropy_image = entropy(gray_image, disk(5))  # Adjust disk size for larger/smaller neighborhoods
+
+# Visualize entropy
+plt.figure(figsize=(8, 6))
+plt.imshow(entropy_image, cmap='viridis')
+plt.colorbar(label="Entropy")
+plt.title("Local Texture Analysis (Entropy)")
+plt.axis("off")
+plt.show()
+
+# Threshold the entropy to create a binary mask
+entropy_threshold = 4.0  # Adjust threshold based on the image
+binary_mask_entropy = entropy_image > entropy_threshold
+
+# Visualize the binary mask
+plt.figure(figsize=(8, 6))
+plt.imshow(binary_mask_entropy, cmap='gray')
+plt.title("Binary Mask (Entropy > Threshold)")
+plt.axis("off")
+plt.show()
+
+```
+
+### Clustering

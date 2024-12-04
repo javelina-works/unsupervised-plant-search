@@ -1,8 +1,8 @@
 import numpy as np
 
-def calculate_all_indices(image):
+def calculate_all_rgb_indices(image):
     """
-    Calculate all vegetation indices for the given image.
+    Calculate all vegetation indices for the given 3 band RGB image.
     
     Parameters:
     - image: RGB image (H, W, 3).
@@ -85,8 +85,8 @@ def calculate_vari(r, g, b):
     - VARI index.
     """
     vari = (g - r) / (g + r - b + 1e-5)  # Avoid division by zero
-    vari_normalized = (vari - np.min(vari)) / (np.max(vari) - np.min(vari) + 1e-5)
-    # return np.clip(vari, -1, 1)
+    # vari_normalized = (vari - np.min(vari)) / (np.max(vari) - np.min(vari) + 1e-5)
+    return np.clip(vari, -1, 1)
     return vari_normalized
 
 def calculate_tvi(r, g, b):
