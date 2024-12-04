@@ -28,7 +28,7 @@ import rasterio
 from rasterio.plot import show
 from PIL import Image
 from ipywidgets import interact, FloatSlider
-
+import os
 
 %matplotlib inline
 ```
@@ -40,6 +40,8 @@ from ipywidgets import interact, FloatSlider
 # Load an image (GeoTIFF or standard formats)
 def load_image(file_path):
     try:
+        if not os.path.exists(file_path):
+            print(f"File not found: {file_path}")
         if file_path.endswith('.tif'):
             # Use rasterio for GeoTIFFs
             with rasterio.open(file_path) as src:
@@ -61,8 +63,9 @@ def plot_image(image, title="Image"):
     plt.show()
 
 
-# file_path = 'input\ESPG-4326-orthophoto.tif'
-file_path = 'input\MADRID_RGB.tif'
+# file_path = 'input/ESPG-4326-orthophoto.tif'
+# file_path = 'input/MADRID_RGB.tif'
+file_path = 'input/aerial-trees.jpg'
 
 image = load_image(file_path)
 if image is not None:
@@ -139,6 +142,8 @@ plt.show()
 
 ```
 
+## Threshold and Mask
+
 ```python
 # Function to overlay the mask on the original image
 def overlay_mask(image, mask, color=(0, 255, 0), alpha=0.5):
@@ -212,4 +217,120 @@ interact(update_threshold, threshold=FloatSlider(value=start_value, min=0.0, max
 
 ```
 
-### RGB Color Space
+#### Refine Image Mask
+
+
+```python
+def refine_mask(mask, kernel_size=5, min_size=50):
+    """
+    Refine the binary mask using morphological operations and size filtering.
+    
+    Parameters:
+    - mask: Binary mask (H, W), values are True for plants and False for background.
+    - kernel_size: Size of the structuring element for morphological operations.
+    - min_size: Minimum size of connected components to retain.
+    
+    Returns:
+    - Refined mask.
+    """
+    # Convert mask to uint8 for OpenCV operations
+    mask = mask.astype(np.uint8)
+    
+    # Create a structuring element
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (kernel_size, kernel_size))
+    
+    # Apply closing (dilation followed by erosion)
+    refined_mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+    
+    # Remove small components based on size
+    num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(refined_mask, connectivity=8)
+    for i in range(1, num_labels):  # Skip the background (label 0)
+        area = stats[i, cv2.CC_STAT_AREA]
+        if area < min_size:
+            refined_mask[labels == i] = 0
+    
+    return refined_mask > 0  # Return as binary mask (True/False)
+
+```
+
+```python
+# Apply the threshold to get the initial mask
+threshold = 0.45  # Adjust as needed
+green_mask = A_normalized > threshold
+
+# Refine the mask
+refined_green_mask = refine_mask(green_mask, kernel_size=5, min_size=100)
+
+# Visualize the refined mask
+plt.figure(figsize=(10, 8))
+plt.imshow(refined_green_mask, cmap='Greens')
+plt.title("Refined Green Mask")
+plt.axis("off")
+plt.show()
+
+```
+
+## Draw Bounding Boxes
+
+```python
+
+# Generate bounding boxes from the binary mask
+def find_bounding_boxes(mask):
+    """
+    Finds bounding boxes for connected components in the binary mask.
+    
+    Parameters:
+    - mask: Binary mask (H, W) with True for plants and False for background.
+    
+    Returns:
+    - List of bounding boxes, where each box is (x_min, y_min, x_max, y_max).
+    """
+    # Label connected components
+    labeled_mask, num_features = label(mask)
+    bounding_boxes = []
+    
+    for i in range(1, num_features + 1):  # Start at 1 because 0 is the background
+        coords = np.argwhere(labeled_mask == i)
+        y_min, x_min = coords.min(axis=0)
+        y_max, x_max = coords.max(axis=0)
+        bounding_boxes.append((x_min, y_min, x_max, y_max))
+    
+    return bounding_boxes
+
+# Draw bounding boxes on the original image
+def draw_bounding_boxes(image, bounding_boxes, color=(255, 0, 0), thickness=2):
+    """
+    Draws bounding boxes on the image.
+    
+    Parameters:
+    - image: Original RGB image (H, W, 3).
+    - bounding_boxes: List of bounding boxes (x_min, y_min, x_max, y_max).
+    - color: RGB tuple for the bounding box color.
+    - thickness: Line thickness of the bounding boxes.
+    
+    Returns:
+    - Image with bounding boxes drawn.
+    """
+    image_with_boxes = image.copy()
+    for box in bounding_boxes:
+        x_min, y_min, x_max, y_max = box
+        cv2.rectangle(image_with_boxes, (x_min, y_min), (x_max, y_max), color, thickness)
+    return image_with_boxes
+
+```
+
+```python
+# Find bounding boxes for the refined mask
+bounding_boxes = find_bounding_boxes(refined_green_mask)
+
+# Draw bounding boxes on the original image
+image_with_boxes = draw_bounding_boxes(image, bounding_boxes)
+
+# Visualize the result
+plt.figure(figsize=(10, 8))
+plt.imshow(image_with_boxes)
+plt.title("Image with Bounding Boxes (Refined Mask)")
+plt.axis("off")
+plt.show()
+
+```
