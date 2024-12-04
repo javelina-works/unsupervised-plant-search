@@ -191,6 +191,7 @@ cleaned_mask = remove_small_holes(cleaned_mask, area_threshold=50)
 
 labeled_mask = label(cleaned_mask)
 regions = regionprops(labeled_mask)
+largest_region = max(r.area for r in regions)
 
 # Interactive visualization function
 def filter_regions(min_size, max_size):
@@ -202,7 +203,7 @@ def filter_regions(min_size, max_size):
         centroid = region.centroid
 
         # Filter regions based on size
-        if (min_size <= region.area) or (region.area >= max_size):
+        if (min_size >= region.area) or (region.area > max_size):
             # Valid regions (green bounding box)
             ax.add_patch(Rectangle((min_col, min_row), max_col - min_col, max_row - min_row,
                                    edgecolor="red", fill=False, linewidth=2))
@@ -217,10 +218,14 @@ def filter_regions(min_size, max_size):
     ax.axis("off")
     plt.show()
 
+
+
+print(largest_region)
+
 # Create interactive sliders for size thresholds
 interact(filter_regions,
-         min_size=IntSlider(value=100, min=0, max=1000, step=10, description="Min Size"),
-         max_size=IntSlider(value=1000, min=100, max=5000, step=10, description="Max Size"));
+         min_size=IntSlider(value=100, min=0, max=largest_region, step=10, description="Min Size"),
+         max_size=IntSlider(value=(largest_region//2), min=100, max=largest_region, step=10, description="Max Size"));
 
 
 # -
