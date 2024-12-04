@@ -197,6 +197,61 @@ plt.show()
 
 ```
 
+### Vegetation Indices Exploratory Data Analysis
+
+```python
+import pandas as pd
+from matplotlib.colors import Normalize
+from matplotlib.cm import ScalarMappable, get_cmap
+
+# Define colormap
+colormap = plt.get_cmap("Greens")  # Use a perceptually uniform colormap
+
+vegetation_indices = indices
+
+# Create a DataFrame for easier analysis
+data_dict = {key: value.ravel() for key, value in vegetation_indices.items()}  # Flatten arrays
+vegetation_df = pd.DataFrame(data_dict)
+
+# Plot histograms for each vegetation index
+fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+
+for ax, (index_name, index_values) in zip(axes.ravel(), vegetation_indices.items()):
+    # Compute histogram data
+    counts, bin_edges = np.histogram(index_values.ravel(), bins=50, density=True)
+    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2  # Calculate bin centers
+
+    # Apply colormap based on bin values
+    norm = Normalize(vmin=bin_centers.min(), vmax=bin_centers.max())
+    colors = colormap(norm(bin_centers))
+
+    # Plot the line graph
+    for i in range(len(bin_centers) - 1):
+        ax.fill_between(bin_centers[i:i + 2], counts[i:i + 2], color=colors[i], alpha=0.7)
+        ax.plot(bin_centers[i:i + 2], counts[i:i + 2], color=colors[i], linewidth=2)
+
+    # Add a colorbar for context
+    sm = ScalarMappable(cmap=colormap, norm=norm)
+    sm.set_array([])
+    cbar = plt.colorbar(sm, ax=ax)
+    cbar.set_label(f"{index_name} Intensity", fontsize=10)
+
+    # Titles and labels
+    ax.set_title(f"{index_name} Distribution", fontsize=14)
+    ax.set_xlabel(f"{index_name} Values")
+    ax.set_ylabel("Density")
+
+plt.tight_layout()
+plt.show()
+
+# Display statistics for vegetation indices
+print("Vegetation Index Statistics:")
+summary_stats = vegetation_df.describe().T  # Transpose for easier readability
+summary_stats["Range"] = summary_stats["max"] - summary_stats["min"]  # Add range
+display(summary_stats)
+
+```
+
 ## Data Preparation
 
 ### Morphological Operations
@@ -356,6 +411,8 @@ This is a quick demonstration of where these pre-processing steps will come in f
 We also increased the contrast to make vegetation areas stand out more from the background (hardly needed, in this case). We used opening to remove small non-vegetation regions, then
 closing to fill back in small gaps.
 
+Finally, we used thresholding to determine which parts of the image are or are not the plants we are looking for. The last plot shows how we did, with the detected regions overlaid on the original image for comparisson.
+
 ```python
 from skimage.exposure import equalize_adapthist
 from skimage.filters import threshold_otsu
@@ -425,3 +482,40 @@ plt.tight_layout()
 plt.show()
 
 ```
+
+```python
+from skimage.io import imsave
+
+# Save binary mask as a PNG image (scaled to [0, 255] for visualization)
+imsave("../outputs/binary_mask.png", (binary_mask * 255).astype(np.uint8))
+
+print("Binary mask saved as 'binary_mask.png' to the outputs directory.")
+
+```
+
+```python
+# Histogram for ExG
+plt.figure(figsize=(8, 6))
+plt.hist(exg_normalized.ravel(), bins=50, color='green', alpha=0.7)
+plt.title("ExG Histogram")
+plt.xlabel("Normalized ExG Value")
+plt.ylabel("Frequency")
+plt.show()
+
+# Summary statistics
+print("ExG Statistics:")
+print(f"Mean: {np.mean(exg_normalized):.2f}")
+print(f"Standard Deviation: {np.std(exg_normalized):.2f}")
+print(f"Min: {np.min(exg_normalized):.2f}, Max: {np.max(exg_normalized):.2f}")
+
+```
+
+## TODO
+
+Possible sections to add:
+- EDA	Understand image characteristics for better tuning.
+- Cropping	Focus on specific regions of interest (ROI).
+- Advanced Filters	Handle complex noise and improve image clarity.
+- Augmentation	Simulate diverse conditions for robustness.
+- Interactive Tuning	Fine-tune preprocessing parameters dynamically.
+- Pipeline Validation	Test preprocessing on diverse image samples.
