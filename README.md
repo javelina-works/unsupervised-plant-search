@@ -13,3 +13,12 @@ Unsupervised computer vision to find target plants from a geo-referenced orthoph
     - Texture-based analysis
     - Clustering techniques
     - Hybrid techniques
+
+
+1_data_preprocessing.ipynb
+2_thresholding_methods.ipynb
+3_texture_analysis.ipynb
+4_clustering_techniques.ipynb
+5_comparison_and_analysis.ipynb
+6_end_to_end_workflow.ipynb
+7_hybrid_techniques.ipynb
