@@ -2,6 +2,7 @@
 # jupyter:
 #   jupytext:
 #     formats: ipynb,py,md
+#     notebook_metadata_filter: all
 #     text_representation:
 #       extension: .py
 #       format_name: light
@@ -11,6 +12,16 @@
 #     display_name: venv
 #     language: python
 #     name: python3
+#   language_info:
+#     codemirror_mode:
+#       name: ipython
+#       version: 3
+#     file_extension: .py
+#     mimetype: text/x-python
+#     name: python
+#     nbconvert_exporter: python
+#     pygments_lexer: ipython3
+#     version: 3.11.5
 # ---
 
 # +
@@ -23,7 +34,7 @@ from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from skimage.filters import threshold_otsu
 from skimage.color import rgb2lab
-from scipy.ndimage import gaussian_filter
+from scipy.ndimage import gaussian_filter, label
 import rasterio
 from rasterio.plot import show
 from PIL import Image
@@ -32,6 +43,8 @@ import os
 
 # %matplotlib inline
 # -
+
+# # Image Thresholding Techniques
 
 # ## Load and Display Image
 #

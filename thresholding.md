@@ -2,6 +2,7 @@
 jupyter:
   jupytext:
     formats: ipynb,py,md
+    notebook_metadata_filter: all
     text_representation:
       extension: .md
       format_name: markdown
@@ -11,6 +12,16 @@ jupyter:
     display_name: venv
     language: python
     name: python3
+  language_info:
+    codemirror_mode:
+      name: ipython
+      version: 3
+    file_extension: .py
+    mimetype: text/x-python
+    name: python
+    nbconvert_exporter: python
+    pygments_lexer: ipython3
+    version: 3.11.5
 ---
 
 ```python
@@ -23,7 +34,7 @@ from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from skimage.filters import threshold_otsu
 from skimage.color import rgb2lab
-from scipy.ndimage import gaussian_filter
+from scipy.ndimage import gaussian_filter, label
 import rasterio
 from rasterio.plot import show
 from PIL import Image
@@ -32,6 +43,9 @@ import os
 
 %matplotlib inline
 ```
+
+# Image Thresholding Techniques
+
 
 ## Load and Display Image
 
@@ -250,6 +264,9 @@ def refine_mask(mask, kernel_size=5, min_size=50):
             refined_mask[labels == i] = 0
     
     return refined_mask > 0  # Return as binary mask (True/False)
+```
+
+```python
 
 ```
 
