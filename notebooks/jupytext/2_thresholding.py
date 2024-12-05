@@ -34,7 +34,6 @@ from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from skimage.color import rgb2lab
 from scipy.ndimage import gaussian_filter, label
-from PIL import Image
 from ipywidgets import interact, FloatSlider, IntSlider
 import sys
 from pathlib import Path

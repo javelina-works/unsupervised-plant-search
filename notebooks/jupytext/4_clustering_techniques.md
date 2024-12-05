@@ -7,17 +7,167 @@ jupyter:
       format_name: markdown
       format_version: '1.3'
       jupytext_version: 1.16.4
+  kernelspec:
+    display_name: venv
+    language: python
+    name: python3
   language_info:
+    codemirror_mode:
+      name: ipython
+      version: 3
+    file_extension: .py
+    mimetype: text/x-python
     name: python
+    nbconvert_exporter: python
+    pygments_lexer: ipython3
+    version: 3.11.5
 ---
 
-### Clustering
+# Clustering
+
+<!-- #region -->
+## Intro to Clustering
+
+#### Clustering for Image Segmentation
+
+Clustering is a powerful technique for grouping similar data points, and its effectiveness depends on the structure and preparation of the data. Below are the general requirements, data preparation steps, and specific considerations for various clustering methods.
+
+---
+
+#### General Requirements for Clustering
+
+1. **Feature Representation**:
+   - Data should be represented as a set of **features**. For images, this could be:
+     - Pixel intensities or colors (e.g., RGB, LAB).
+     - Derived metrics (e.g., vegetation indices, gradients, texture features).
+     - Spatial information (e.g., coordinates of pixels).
+
+2. **Dimensionality**:
+   - Clustering operates on **n-dimensional feature vectors**. For image segmentation:
+     - For color clustering: A 3D vector like `[R, G, B]` per pixel.
+     - For spatial clustering: Combine color/intensity with spatial coordinates `[R, G, B, x, y]`.
+
+3. **Normalization**:
+   - Features should be scaled to the same range (e.g., [0, 1] or standardization) to prevent bias toward features with larger ranges.
+
+4. **Separation of Clusters**:
+   - Clustering is effective if there is a natural separation or structure in the data. Highly overlapping or noisy data can make clustering less reliable.
+
+5. **Number of Clusters**:
+   - Some clustering algorithms require you to specify the number of clusters (e.g., K-means), while others (e.g., DBSCAN) detect clusters based on density.
+
+---
+
+#### Data Preparation for Clustering
+
+**1. Reshape Data**
+
+For images, pixels need to be flattened into a 2D array where each row is a feature vector.
+
+```python
+# Reshape image into feature vectors
+data = image.reshape(-1, image.shape[-1])  # (num_pixels, num_features)
+```
+
+**2. Combine Features**
+
+If you want to use spatial information, add pixel coordinates as features.
+
+```python
+# Add spatial coordinates
+h, w, c = image.shape
+coords = np.indices((h, w)).reshape(2, -1).T  # (num_pixels, 2)
+data_with_coords = np.hstack([data, coords])  # Combine image features with coordinates
+```
+
+**3. Normalize Features**
+
+Normalize or scale features to ensure fair weighting.
+
+```python
+from sklearn.preprocessing import StandardScaler
+scaler = StandardScaler()
+normalized_data = scaler.fit_transform(data_with_coords)
+```
 
 
-#### K-Means Clustering
+#### Key Considerations for Effectiveness
+
+1. **Cluster Separability**:
+   - Clustering performs best when clusters are well-separated.
+   - Use dimensionality reduction (e.g., PCA, t-SNE) for visualization or feature extraction.
+
+2. **Noise and Outliers**:
+   - High noise levels can degrade clustering quality.
+   - Use preprocessing (e.g., filtering) to clean the data.
+
+3. **Feature Selection**:
+   - Select meaningful features to improve clustering accuracy.
+   - For images, consider combining color, texture, and spatial features.
+<!-- #endregion -->
+
+## Notebook Setup
+
+```python
+# Load required libraries
+import numpy as np
+import cv2
+import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
+from sklearn.cluster import KMeans
+from sklearn.decomposition import PCA
+from skimage.color import rgb2lab
+from scipy.ndimage import gaussian_filter, label
+from PIL import Image
+from ipywidgets import interact, FloatSlider, IntSlider
+import sys
+from pathlib import Path
+
+# Add the parent directory to the Python path
+sys.path.append(str(Path.cwd().parent))
+
+%matplotlib inline
+```
+
+```python
+from plant_search.load_image import load_image, plot_image
+
+# file_path = '../input/ESPG-4326-orthophoto.tif'
+# file_path = '../input/MADRID_RGB.tif'
+file_path = '../input/aerial-trees.jpg'
+
+image = load_image(file_path)
+if image is not None:
+    plot_image(image, "Original Image")
+
+```
+
+```python
+from plant_search.vegetation_indices import calculate_all_rgb_indices
+
+
+# Remember these guys from chapter 2? 
+# We are going to see how they fare against clustering.
+indices = calculate_all_rgb_indices(image)
+```
+
+## K-Means Clustering
+
+This guy is our go-to. Super fast, mostly works. You are generally going to want to try this first if you need to do some clustering. 
+
+One of the major downsides is that it makes you determine the number of clusters you are going to find *before* you run it. There are some ways around this (elbow technique), but it is a big limitation.
+
+> From ChatGPT: 
+- **Input**: Numeric data; requires the number of clusters (k) as an input.
+- **Effectiveness**:
+    - Works well when clusters are spherical and evenly distributed.
+    - Sensitive to feature scaling (normalization is crucial).
+- **Limitations**:
+    - Struggles with irregularly shaped clusters or clusters of different sizes.
 
 ```python
 from sklearn.cluster import KMeans
+
 
 # Reshape image or vegetation index for clustering
 def prepare_data_for_clustering(image, use_index=None):
@@ -53,47 +203,54 @@ def apply_kmeans_clustering(data, n_clusters=3):
     Returns:
     - Cluster labels for each data point.
     """
-    kmeans = KMeans(n_clusters=n_clusters, random_state=42)
-    labels = kmeans.fit_predict(data)
+    h, w = data.shape
+    data = data.reshape(-1, 1)  # Reshape for K-Means
+    kmeans = KMeans(n_clusters=n_clusters, random_state=42).fit(data)
+    labels = kmeans.labels_.reshape(h, w)  # Reshape back to the image
     return labels
 
-# Visualize clustered image
-def visualize_clusters(labels, shape, title="Clustering Result"):
-    """
-    Visualize clustering result.
 
-    Parameters:
-    - labels: Cluster labels for each pixel (flattened).
-    - shape: Original image shape for reshaping.
-    - title: Title for the plot.
-    """
-    clustered_image = labels.reshape(shape)
-    plt.figure(figsize=(8, 6))
-    plt.imshow(clustered_image, cmap='viridis')
-    plt.title(title)
-    plt.axis("off")
-    plt.colorbar(label="Cluster")
-    plt.show()
+# Plot vegetation indices and their K-Means cluster maps
+fig, axes = plt.subplots(len(indices), 2, figsize=(12, 4 * len(indices)))
 
-# Example: Use ExG for clustering
-data, original_shape = prepare_data_for_clustering(image, use_index="ExG")
-cluster_labels = apply_kmeans_clustering(data, n_clusters=3)
-visualize_clusters(cluster_labels, original_shape, title="Clustering Based on ExG")
+for i, (key, index) in enumerate(indices.items()):
+    # K-Means clustering
+    clustered = apply_kmeans_clustering(index, 3)
+
+    # Vegetation index plot
+    axes[i, 0].imshow(index, cmap="viridis")
+    axes[i, 0].set_title(f"{key} (Normalized)")
+    axes[i, 0].axis("off")
+
+    # K-Means clustering plot
+    axes[i, 1].imshow(clustered, cmap="seismic")
+    axes[i, 1].set_title(f"{key} (K-Means Clustering)")
+    axes[i, 1].axis("off")
+
+plt.tight_layout()
+plt.show()
 
 ```
 
 ```python
-data, original_shape = prepare_data_for_clustering(image)
-cluster_labels = apply_kmeans_clustering(data, n_clusters=3)
-visualize_clusters(cluster_labels, original_shape, title="Clustering Based on RGB")
+data = image.reshape(-1, 3)
+kmeans = KMeans(n_clusters=3, random_state=42).fit(data)
+cluster_labels = kmeans.fit_predict(data)
+clustered_image = cluster_labels.reshape(image.shape[:2])
 
-```
+fig, axes = plt.subplots(1, 2, figsize=(12, 6))
+# Vegetation index plot
+axes[0].imshow(image)
+axes[0].set_title(f"Original Image")
+axes[0].axis("off")
 
-```python
-data, original_shape = prepare_data_for_clustering(image, use_index="GLI")
-cluster_labels = apply_kmeans_clustering(data, n_clusters=3)
-visualize_clusters(cluster_labels, original_shape, title="Clustering Based on GLI")
+# K-Means clustering plot
+axes[1].imshow(clustered_image, cmap="plasma")
+axes[1].set_title(f"RGB K-Means Clustering")
+axes[1].axis("off")
 
+plt.tight_layout()
+plt.show()
 ```
 
 ```python

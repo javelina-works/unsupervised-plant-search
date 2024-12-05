@@ -23,6 +23,13 @@ jupyter:
     version: 3.11.5
 ---
 
+### TODO:
+
+- GLCM or Local Binary Patterns (LBP).
+- Contour Analysis
+- 
+
+
 # Texture-Based Analysis
 
 
