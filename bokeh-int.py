@@ -11,7 +11,7 @@ import numpy as np
 from matplotlib import cm
 import os
 import logging
-from logging_utils import setup_logger
+from utils.logging_utils import setup_logger
 
 # Initialize the logger
 logger = setup_logger(name="my_project_logger", log_level=logging.DEBUG)
@@ -86,13 +86,6 @@ def process_geotiff(file_contents):
             # image_source.data = {"image": [rgba_image]}
 
             # return rgba_image
-
-            # p.x_range.start = src.bounds.left
-            # p.x_range.end = src.bounds.right
-            # p.y_range.start = src.bounds.bottom
-            # p.y_range.end = src.bounds.top
-            # p.width = src.width
-            # p.height = src.height
 
 
 # Callback for file upload
